@@ -38,13 +38,4 @@ ENV KAFKA_HOME /opt/kafka
 
 EXPOSE 2181 9092 22
 
-#WORKDIR /opt/zookeeper
-
-#VOLUME ["/opt/zookeeper/conf", "/tmp/zookeeper"]
-
-#ENTRYPOINT ["/opt/zookeeper/bin/zkServer.sh", "start"]
-#CMD ["start-foreground"]
-#CMD ["/opt/zookeeper/bin/zkServer.sh start"]
 #CMD ["/usr/sbin/sshd", "-D"]
-#CMD ["/opt/zookeeper/bin/zkServer.sh", "start"]
-#CMD ["/opt/kafka/config/replace.sh"]
