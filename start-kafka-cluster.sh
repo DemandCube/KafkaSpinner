@@ -92,7 +92,7 @@ sudo docker rm -f $(docker ps -a -q)
 echo "Starting zookeeper"
 sudo docker run -d -p 2181:2181 -p 2222:22 -h znode --name znode ubuntu:kafka /opt/zookeeper/start-zookeeper.sh
 #Wainting for 5 seconds to allow znode to start zookeeper
-echo "Wainting for 10 seconds to allow znode to start zookeeper"
+echo "Waiting for 10 seconds to allow znode to start zookeeper"
 sleep 10
 
 while [ "$CURRENT_NODE" -le "$NUM_KAFKA" ]    # this is loop1
