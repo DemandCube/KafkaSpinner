@@ -26,8 +26,6 @@ function getPort(){
 function updateHosts
 {
   echo "Updating /etc/hosts on all kafka nodes..."
-  #IFS='.' read -ra IP <<< "$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" znode)"
-  #echo ${IP[0]}.${IP[1]}.xx.xx
 
   for i in "${NODE[@]}" 
     do 
@@ -37,7 +35,6 @@ function updateHosts
           ssh -o StrictHostKeyChecking=no root@localhost -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
         done
     done 
-#  exit 0
 }
 
 function modifyHosts
