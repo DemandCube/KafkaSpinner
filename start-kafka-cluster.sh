@@ -59,6 +59,7 @@ ssh -o StrictHostKeyChecking=no root@localhost -p $(docker inspect -f '{{ if ind
           ssh -o StrictHostKeyChecking=no root@localhost -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' knode"$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
         done
     done
+  unset $FAILED_NODE
   startFailureTimer
 }
 
@@ -117,6 +118,8 @@ function addNode
 function killNode
 {
   FAILED_COUNT=1
+  unset  FAILED_NODE
+  declare -A FAILED_NODE
   failureNodeCount=$(shuf -i 1-"$FAILURE_NUM_NODE" -n 1)
   echo "$failureNodeCount node going to fail now"
   failureNumNodes=($(shuf -i 1-${#NODE[@]} -n "$failureNodeCount"))
