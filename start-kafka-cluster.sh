@@ -1,6 +1,7 @@
 #!/bin/bash 
 
-NUM_KAFKA=1;
+NUM_KAFKA=5;
+MIN_KAFKA_NODE=3;
 CURRENT_NODE=1;
 FAILURE_TIME_RANGE=30-40;
 FAILURE_NUM_NODE=1;
@@ -10,7 +11,8 @@ ATTACH_TIME_RANGE=1-5;
 function usage
 {
   echo -e "\nKafka Spinner Usage: \n
-  --num-kafka-node        Number of kafka nodes to launch. (eg: --num-kafka-node 3)
+  --max-kafka-node        Maximun number of kafka nodes to launch. (eg: --max-kafka-node 3, Default: 5)
+  --min-kafka-node        Minimum number of kafka nodes, which is used to validate with maximum number of kafka nodes to kill. (eg: --min-kafka-node 2, Default: 3)
   --failure-time-range    Failure time range to make kafka node to fail in between the given time duration. It will be measured in minutes. (eg: --failure-time-range 30-60)
   --failure-num-node      Random nimber of nodes to fail when cluster is up and running. (eg: --failure-num-node 2)
   --attach-time-range     Time range to add new nodes to the cluster after node failure. It will be measured in minutes (eg: --attach-time-range 15-15)
@@ -62,14 +64,22 @@ ssh -o StrictHostKeyChecking=no root@localhost -p $(docker inspect -f '{{ if ind
 
 while [ "$1" != "" ]; do
   case $1 in
-    --num-kafka-node)        shift
+    --max-kafka-node)        shift
                              NUM_KAFKA=$1
+                             ;;
+    --min-kafka-node)        shift
+                             MIN_KAFKA_NODE=$1
                              ;;
     --failure-time-range)    shift
                              FAILURE_TIME_RANGE=$1
                              ;;
     --failure-num-node)      shift
                              FAILURE_NUM_NODE=$1
+                             DIFF=`expr $NUM_KAFKA - $FAILURE_NUM_NODE`
+                             if [ $DIFF -lt $MIN_KAFKA_NODE ];then
+                             echo "It is not allowed to kill/fail nodes less than minimum node"
+                             exit 1
+                             fi
                              ;;
     --attach-time-range)     shift
                              ATTACH_TIME_RANGE=$1
