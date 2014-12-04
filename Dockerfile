@@ -25,14 +25,20 @@ RUN mkdir -p /tmp/zookeeper
 
 ADD start-kafka.sh /opt/kafka/start-kafka.sh
 ADD start-zookeeper.sh /opt/zookeeper/start-zookeeper.sh
+
 RUN chmod +x /opt/zookeeper/start-zookeeper.sh
 RUN chmod +x /opt/kafka/start-kafka.sh
 
-ADD config_modifier.sh /opt/kafka/config/config_modifier.sh
-RUN chmod +x /opt/kafka/config/config_modifier.sh
+ADD config-zookeeper.sh /opt/zookeeper/config-zookeeper.sh
+RUN chmod +x /opt/zookeeper/config-zookeeper.sh
+
+ADD config-kafka.sh /opt/kafka/config/config-kafka.sh
+RUN chmod +x /opt/kafka/config/config-kafka.sh
 
 #RUN  echo "    IdentityFile ~/.ssh/id_rsa" >> /etc/ssh/ssh_config
 ADD authorized_keys /opt/authorized_keys
+ADD zoo.cfg /opt/zookeeper/conf/zoo.cfg
+
 
 ENV KAFKA_HOME /opt/kafka
 

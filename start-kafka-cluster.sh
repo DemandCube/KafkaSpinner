@@ -1,11 +1,14 @@
 #!/bin/bash 
 
-NUM_KAFKA=5;
-MIN_KAFKA_NODE=3;
+NUM_KAFKA=3;
+MIN_KAFKA_NODE=2;
 CURRENT_NODE=1;
-FAILURE_TIME_RANGE=30-40;
+CURRENT_ZOO_NODE=1;
+FAILURE_TIME_RANGE=30-60;
 FAILURE_NUM_NODE=1;
 ATTACH_TIME_RANGE=1-5;
+MIN_ZOO=1
+MAX_ZOO=3
 
 # This function is used to display usage.
 function usage
@@ -29,10 +32,10 @@ function updateHosts
 {
   echo "Updating /etc/hosts on all kafka nodes..."
 
-  for i in "${NODE[@]}" 
+  for i in "${ALL_NODE[@]}" 
     do 
       #echo $i
-      for j in "${NODE[@]}"
+      for j in "${ALL_NODE[@]}"
         do
           ssh -o StrictHostKeyChecking=no root@localhost -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
         done
@@ -42,7 +45,7 @@ function updateHosts
 function modifyHosts
 {
   echo "Modifying /etc/hosts..."
-  for i in "${NODE[@]}"
+  for i in "${ALL_NODE[@]}"
     do
       for j in "${FAILED_NODE[@]}"
         do
@@ -53,7 +56,7 @@ ssh -o StrictHostKeyChecking=no root@localhost -p $(docker inspect -f '{{ if ind
  for i in "${FAILED_NODE[@]}"
     do
       #echo $i
-      for j in "${NODE[@]}"
+      for j in "${ALL_NODE[@]}"
         do
           ssh -o StrictHostKeyChecking=no root@localhost -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' knode"$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
         done
@@ -64,11 +67,15 @@ ssh -o StrictHostKeyChecking=no root@localhost -p $(docker inspect -f '{{ if ind
 
 while [ "$1" != "" ]; do
   case $1 in
-    --max-kafka-node)        shift
-                             NUM_KAFKA=$1
+    --kafka-node-range)      shift
+                             IFS='-' read -a KAFKA_NODE_RANGE <<< "${1}"
+                             NUM_KAFKA=${KAFKA_NODE_RANGE[1]}
+                             MIN_KAFKA_NODE=${KAFKA_NODE_RANGE[0]}
                              ;;
-    --min-kafka-node)        shift
-                             MIN_KAFKA_NODE=$1
+    --zookeeper-node-range)  shift
+                             IFS='-' read -a ZOO_NODE_RANGE <<< "${1}"
+                             MIN_ZOO=${ZOO_NODE_RANGE[0]}
+                             MAX_ZOO=${ZOO_NODE_RANGE[1]}
                              ;;
     --failure-time-range)    shift
                              FAILURE_TIME_RANGE=$1
@@ -93,24 +100,106 @@ while [ "$1" != "" ]; do
   shift
 done
 
+function runCommand
+{
+  ssh -o StrictHostKeyChecking=no root@localhost -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$1") "$2"
+}
+
+function startKafkaContainer
+{
+  sudo docker run -d -P -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST --privileged  -h knode$1 --name knode$1 ubuntu:kafka /opt/kafka/config/config-kafka.sh
+}
+
+
 # Removing existing docker containers which are running
 sudo docker rm -f $(docker ps -a -q)
 
-echo "Starting zookeeper"
-sudo docker run -d -p 2181:2181 -p 2222:22 -h znode --name znode ubuntu:kafka /opt/zookeeper/start-zookeeper.sh
-#Wainting for 5 seconds to allow znode to start zookeeper
-echo "Waiting for 10 seconds to allow znode to start zookeeper"
-sleep 10
+echo "Removing zookeeper configuration file if exists in local"
+rm zoo.cfg
+
+echo "Creating zookeeper configuration file for cluster"
+echo "tickTime=2000" > zoo.cfg
+echo "initLimit=10" >> zoo.cfg
+echo "syncLimit=2" >> zoo.cfg
+echo "dataDir=/tmp/zookeeper" >> zoo.cfg
+echo "clientPort=2181" >> zoo.cfg
+while [ "$CURRENT_ZOO_NODE" -le "$MAX_ZOO" ]
+  do
+    echo "server.$CURRENT_ZOO_NODE=zoo$CURRENT_ZOO_NODE:2888:3888" >> zoo.cfg
+    ZK_CONNECT+='zoo'$CURRENT_ZOO_NODE':2181,'
+    CURRENT_ZOO_NODE=`expr $CURRENT_ZOO_NODE + 1`
+done
 
 while [ "$CURRENT_NODE" -le "$NUM_KAFKA" ]    # this is loop1
   do
-    NODE[$CURRENT_NODE]=knode$CURRENT_NODE
-    echo "starting knode$CURRENT_NODE..."
-    sudo docker run -d -P -e BROKER_ID=$CURRENT_NODE --privileged  -h knode$CURRENT_NODE --link znode:znode --name knode$CURRENT_NODE  ubuntu:kafka /opt/kafka/start-kafka.sh
+    BROKER_LIST+='knode'$CURRENT_NODE':9092,'
     CURRENT_NODE=`expr $CURRENT_NODE + 1`
 done
 
+BROKER_LIST="${BROKER_LIST%?}"
+ZK_CONNECT="${ZK_CONNECT%?}"
+CURRENT_ZOO_NODE=1
+CURRENT_NODE=1
+
+echo "Building base docker image..."
+docker build -t ubuntu:kafka .
+ALL_NODE=()
+
+while [ "$CURRENT_ZOO_NODE" -le "$MAX_ZOO" ]
+  do
+    ZOO_NODE[$CURRENT_ZOO_NODE]=zoo$CURRENT_ZOO_NODE
+    ALL_NODE+=(zoo$CURRENT_ZOO_NODE)
+    echo "starting zoo$CURRENT_ZOO_NODE container..."
+    sudo docker run -d -P -e SERVER_ID=$CURRENT_ZOO_NODE --privileged  -h zoo$CURRENT_ZOO_NODE --name zoo$CURRENT_ZOO_NODE  ubuntu:kafka /opt/zookeeper/config-zookeeper.sh
+    CURRENT_ZOO_NODE=`expr $CURRENT_ZOO_NODE + 1`
+done
+
+
+while [ "$CURRENT_NODE" -le "$NUM_KAFKA" ] 
+  do
+    NODE[$CURRENT_NODE]=knode$CURRENT_NODE
+    ALL_NODE+=(knode$CURRENT_NODE)
+    echo "starting knode$CURRENT_NODE..."
+    #sudo docker run -d -P -e BROKER_ID=$CURRENT_NODE --privileged  -h knode$CURRENT_NODE --name knode$CURRENT_NODE  ubuntu:kafka /opt/kafka/start-kafka.sh
+    startKafkaContainer $CURRENT_NODE
+    CURRENT_NODE=`expr $CURRENT_NODE + 1`
+done
+
+echo $ZK_CONNECT
+
 updateHosts
+
+
+CURRENT_ZOO_NODE=1
+echo "Start zookeeper in all node"
+for i in "${ZOO_NODE[@]}"
+  do
+    echo "Starting zookeeper in $i"
+    runCommand $i /opt/zookeeper/start-zookeeper.sh
+  done
+
+echo "Start kafka in all node"
+for i in "${NODE[@]}"
+  do
+    echo "Starting kafka in $i"
+    runCommand $i /opt/kafka/start-kafka.sh
+  done
+
+#echo "Starting zookeeper"
+#sudo docker run -d -p 2181:2181 -p 2222:22 -h znode --name znode ubuntu:kafka /opt/zookeeper/start-zookeeper.sh
+##Wainting for 5 seconds to allow znode to start zookeeper
+#echo "Waiting for 10 seconds to allow znode to start zookeeper"
+#sleep 10
+#
+#while [ "$CURRENT_NODE" -le "$NUM_KAFKA" ]    # this is loop1
+#  do
+#    NODE[$CURRENT_NODE]=knode$CURRENT_NODE
+#    echo "starting knode$CURRENT_NODE..."
+#    sudo docker run -d -P -e BROKER_ID=$CURRENT_NODE --privileged  -h knode$CURRENT_NODE --link znode:znode --name knode$CURRENT_NODE  ubuntu:kafka /opt/kafka/start-kafka.sh
+#    CURRENT_NODE=`expr $CURRENT_NODE + 1`
+#done
+
+#updateHosts
 function addNode
 {
   echo "Adding new node"
@@ -169,4 +258,4 @@ function startFailureTimer
    done
 }
 
-startFailureTimer
+#startFailureTimer
