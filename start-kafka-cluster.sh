@@ -112,7 +112,8 @@ function startKafkaContainer
 
 
 # Removing existing docker containers which are running
-sudo docker rm -f $(docker ps -a -q)
+docker stop $(docker ps -a -q)
+docker rm $(docker ps -a -q)
 
 echo "Removing zookeeper configuration file if exists in local"
 rm zoo.cfg

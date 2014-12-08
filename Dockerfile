@@ -14,7 +14,7 @@ ENV NOTVISIBLE "in users profile"
 RUN echo "export VISIBLE=now" >> /etc/profile
 
 
-RUN wget -q http://apache.communilink.net/kafka/0.8.1.1/kafka_2.9.2-0.8.1.1.tgz -O /tmp/kafka_2.9.2-0.8.1.1.tgz
+RUN wget -q http://apache.01link.hk/kafka/0.8.1.1/kafka_2.9.2-0.8.1.1.tgz -O /tmp/kafka_2.9.2-0.8.1.1.tgz
 RUN tar xfz /tmp/kafka_2.9.2-0.8.1.1.tgz -C /opt
 RUN mv /opt/kafka_2.9.2-0.8.1.1 /opt/kafka
 
@@ -22,6 +22,7 @@ RUN wget -q -O - http://apache.mirrors.pair.com/zookeeper/zookeeper-3.4.6/zookee
 RUN mv /opt/zookeeper-3.4.6 /opt/zookeeper
 RUN cp /opt/zookeeper/conf/zoo_sample.cfg /opt/zookeeper/conf/zoo.cfg
 RUN mkdir -p /tmp/zookeeper
+
 
 ADD start-kafka.sh /opt/kafka/start-kafka.sh
 ADD start-zookeeper.sh /opt/zookeeper/start-zookeeper.sh
