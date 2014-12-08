@@ -37,7 +37,7 @@ function updateHosts
       #echo $i
       for j in "${ALL_NODE[@]}"
         do
-          ssh -o StrictHostKeyChecking=no root@localhost -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
+          ssh -o StrictHostKeyChecking=no $USER@localhost -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
         done
     done 
 }
@@ -49,7 +49,7 @@ function modifyHosts
     do
       for j in "${FAILED_NODE[@]}"
         do
-ssh -o StrictHostKeyChecking=no root@localhost -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "cp /etc/hosts /etc/hosts.bak && sed -e '/knode"$j"/s=^[0-9\.]*='"$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' knode$j)"'=' /etc/hosts.bak > /etc/hosts"
+ssh -o StrictHostKeyChecking=no $USER@localhost -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "cp /etc/hosts /etc/hosts.bak && sed -e '/knode"$j"/s=^[0-9\.]*='"$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' knode$j)"'=' /etc/hosts.bak > /etc/hosts"
         done
     done
 
@@ -107,7 +107,7 @@ function runCommand
 
 function startKafkaContainer
 {
-  sudo docker run -d -P -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST --privileged  -h knode$1 --name knode$1 ubuntu:kafka /opt/kafka/config/config-kafka.sh
+  docker run -d -P -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST --privileged  -h knode$1 --name knode$1 ubuntu:kafka /opt/kafka/config/config-kafka.sh
 }
 
 
@@ -151,7 +151,7 @@ while [ "$CURRENT_ZOO_NODE" -le "$MAX_ZOO" ]
     ZOO_NODE[$CURRENT_ZOO_NODE]=zoo$CURRENT_ZOO_NODE
     ALL_NODE+=(zoo$CURRENT_ZOO_NODE)
     echo "starting zoo$CURRENT_ZOO_NODE container..."
-    sudo docker run -d -P -e SERVER_ID=$CURRENT_ZOO_NODE --privileged  -h zoo$CURRENT_ZOO_NODE --name zoo$CURRENT_ZOO_NODE  ubuntu:kafka /opt/zookeeper/config-zookeeper.sh
+    docker run -d -P -e SERVER_ID=$CURRENT_ZOO_NODE --privileged  -h zoo$CURRENT_ZOO_NODE --name zoo$CURRENT_ZOO_NODE  ubuntu:kafka /opt/zookeeper/config-zookeeper.sh
     CURRENT_ZOO_NODE=`expr $CURRENT_ZOO_NODE + 1`
 done
 
@@ -208,7 +208,7 @@ function addNode
     do
       #echo "Failed nodes are $i"
       echo "starting knode$i..."
-      sudo docker run -d -P -e BROKER_ID=$i --privileged  -h knode$i --link znode:znode --name knode$i  ubuntu:kafka /opt/kafka/start-kafka.sh 
+      docker run -d -P -e BROKER_ID=$i --privileged  -h knode$i --link znode:znode --name knode$i  ubuntu:kafka /opt/kafka/start-kafka.sh 
     done
   modifyHosts
 }
@@ -223,7 +223,7 @@ function killNode
   for i in "${failureNumNodes[@]}"
     do
       echo "knode$i going to die..."
-      sudo docker rm -f knode$i
+      docker rm -f knode$i
       echo "knode$i died"
       FAILED_NODE[$FAILED_COUNT]=$i
       FAILED_COUNT=`expr $FAILED_COUNT + 1`
