@@ -37,7 +37,7 @@ function updateHosts
       #echo $i
       for j in "${ALL_NODE[@]}"
         do
-          ssh -o StrictHostKeyChecking=no $USER@localhost -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
+          ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
         done
     done 
 }
@@ -49,7 +49,7 @@ function modifyHosts
     do
       for j in "${FAILED_NODE[@]}"
         do
-ssh -o StrictHostKeyChecking=no $USER@localhost -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "cp /etc/hosts /etc/hosts.bak && sed -e '/knode"$j"/s=^[0-9\.]*='"$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' knode$j)"'=' /etc/hosts.bak > /etc/hosts"
+ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "cp /etc/hosts /etc/hosts.bak && sed -e '/knode"$j"/s=^[0-9\.]*='"$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' knode$j)"'=' /etc/hosts.bak > /etc/hosts"
         done
     done
 
@@ -58,7 +58,7 @@ ssh -o StrictHostKeyChecking=no $USER@localhost -p $(docker inspect -f '{{ if in
       #echo $i
       for j in "${ALL_NODE[@]}"
         do
-          ssh -o StrictHostKeyChecking=no root@localhost -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' knode"$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
+          ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' knode"$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
         done
     done
   unset $FAILED_NODE
@@ -102,7 +102,7 @@ done
 
 function runCommand
 {
-  ssh -o StrictHostKeyChecking=no root@localhost -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$1") "$2"
+  ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$1") "$2"
 }
 
 function startKafkaContainer
@@ -110,6 +110,9 @@ function startKafkaContainer
   docker run -d -P -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST --privileged  -h knode$1 --name knode$1 ubuntu:kafka /opt/kafka/config/config-kafka.sh
 }
 
+#Copy public ssh to authorized_keys
+echo "Copy public ssh to authorized_keys"
+cat ~/.ssh/id_rsa.pub > ./authorized_keys
 
 # Removing existing docker containers which are running
 docker stop $(docker ps -a -q)
