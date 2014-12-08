@@ -14,8 +14,8 @@ MAX_ZOO=3
 function usage
 {
   echo -e "\nKafka Spinner Usage: \n
-  --max-kafka-node        Maximun number of kafka nodes to launch. (eg: --max-kafka-node 3, Default: 5)
-  --min-kafka-node        Minimum number of kafka nodes, which is used to validate with maximum number of kafka nodes to kill. (eg: --min-kafka-node 2, Default: 3)
+  --kafka-node-range      Number of minimum and maximum kafka nodes to launch. (eg: --kafka-node-range 3-5, Default: 1-3)
+  --zookeeper-node-range  Number of minimum and maximum zookeeper nodes to launch. (eg: --zookeeper-node-range 3-5, Default: 1-3)
   --failure-time-range    Failure time range to make kafka node to fail in between the given time duration. It will be measured in minutes. (eg: --failure-time-range 30-60)
   --failure-num-node      Random nimber of nodes to fail when cluster is up and running. (eg: --failure-num-node 2)
   --attach-time-range     Time range to add new nodes to the cluster after node failure. It will be measured in minutes (eg: --attach-time-range 15-15)
