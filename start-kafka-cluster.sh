@@ -9,6 +9,10 @@ FAILURE_NUM_NODE=1;
 ATTACH_TIME_RANGE=1-5;
 MIN_ZOO=1
 MAX_ZOO=3
+ZOO_BASE_PORT=218;
+KAFKA_BASE_PORT=909;
+SSH_BASE_PORT=222;
+
 
 # This function is used to display usage.
 function usage
@@ -49,7 +53,7 @@ function modifyHosts
     do
       for j in "${FAILED_NODE[@]}"
         do
-ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "cp /etc/hosts /etc/hosts.bak && sed -e '/knode"$j"/s=^[0-9\.]*='"$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' knode$j)"'=' /etc/hosts.bak > /etc/hosts"
+ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "cp /etc/hosts /etc/hosts.bak && sed -e '/"$j"/s=^[0-9\.]*='"$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $j)"'=' /etc/hosts.bak > /etc/hosts"
         done
     done
 
@@ -58,11 +62,10 @@ ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if 
       #echo $i
       for j in "${ALL_NODE[@]}"
         do
-          ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' knode"$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
+          ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
         done
     done
   unset $FAILED_NODE
-  startFailureTimer
 }
 
 while [ "$1" != "" ]; do
@@ -82,11 +85,11 @@ while [ "$1" != "" ]; do
                              ;;
     --failure-num-node)      shift
                              FAILURE_NUM_NODE=$1
-                             DIFF=`expr $NUM_KAFKA - $FAILURE_NUM_NODE`
-                             if [ $DIFF -lt $MIN_KAFKA_NODE ];then
-                             echo "It is not allowed to kill/fail nodes less than minimum node"
-                             exit 1
-                             fi
+                             #DIFF=`expr $NUM_KAFKA - $FAILURE_NUM_NODE`
+                             #if [ $DIFF -lt $MIN_KAFKA_NODE ];then
+                             #echo "It is not allowed to kill/fail nodes less than minimum node"
+                             #exit 1
+                             #fi
                              ;;
     --attach-time-range)     shift
                              ATTACH_TIME_RANGE=$1
@@ -107,16 +110,22 @@ function runCommand
 
 function startKafkaContainer
 {
-  docker run -d -P -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST --privileged  -h knode$1 --name knode$1 ubuntu:kafka /opt/kafka/config/config-kafka.sh
+  docker run -d -p 22 -p $KAFKA_BASE_PORT$1:9092 -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST --privileged  -h knode$1 --name knode$1 ubuntu:kafka /opt/kafka/config/config-kafka.sh
 }
+
+function startZookeeperContainer
+{
+  docker run -d -p 22 -p $ZOO_BASE_PORT$1:2181 -e SERVER_ID=$1 --privileged  -h zoo$1 --name zoo$1  ubuntu:kafka /opt/zookeeper/config-zookeeper.sh
+}
+
 
 #Copy public ssh to authorized_keys
 echo "Copy public ssh to authorized_keys"
 cat ~/.ssh/id_rsa.pub > ./authorized_keys
 
 # Removing existing docker containers which are running
-docker stop $(docker ps -a -q)
-docker rm $(docker ps -a -q)
+#docker stop $(docker ps -a -q)
+docker rm -f $(docker ps -a -q)
 
 echo "Removing zookeeper configuration file if exists in local"
 rm zoo.cfg
@@ -154,7 +163,8 @@ while [ "$CURRENT_ZOO_NODE" -le "$MAX_ZOO" ]
     ZOO_NODE[$CURRENT_ZOO_NODE]=zoo$CURRENT_ZOO_NODE
     ALL_NODE+=(zoo$CURRENT_ZOO_NODE)
     echo "starting zoo$CURRENT_ZOO_NODE container..."
-    docker run -d -P -e SERVER_ID=$CURRENT_ZOO_NODE --privileged  -h zoo$CURRENT_ZOO_NODE --name zoo$CURRENT_ZOO_NODE  ubuntu:kafka /opt/zookeeper/config-zookeeper.sh
+#    docker run -d -p 22 -p $ZOO_BASE_PORT$CURRENT_ZOO_NODE:2181 -e SERVER_ID=$CURRENT_ZOO_NODE --privileged  -h zoo$CURRENT_ZOO_NODE --name zoo$CURRENT_ZOO_NODE  ubuntu:kafka /opt/zookeeper/config-zookeeper.sh
+    startZookeeperContainer $CURRENT_ZOO_NODE
     CURRENT_ZOO_NODE=`expr $CURRENT_ZOO_NODE + 1`
 done
 
@@ -174,7 +184,6 @@ echo $ZK_CONNECT
 updateHosts
 
 
-CURRENT_ZOO_NODE=1
 echo "Start zookeeper in all node"
 for i in "${ZOO_NODE[@]}"
   do
@@ -204,17 +213,114 @@ for i in "${NODE[@]}"
 #done
 
 #updateHosts
+array_contains () {
+local array="$1[@]"
+    local seeking=$2
+    local in=1
+    for element in "${!array}"; do
+        if [[ $element == $seeking ]]; then
+            in=0
+            break
+        fi
+    done
+    return $in
+}
+
 function addNode
 {
   echo "Adding new node"
   for i in "${FAILED_NODE[@]}"
     do
       #echo "Failed nodes are $i"
-      echo "starting knode$i..."
-      docker run -d -P -e BROKER_ID=$i --privileged  -h knode$i --link znode:znode --name knode$i  ubuntu:kafka /opt/kafka/start-kafka.sh 
+      echo "starting $i..."
+      j=$(sed 's/[^0-9]//g' <<<  $i)
+      if [[ "$i" == *zoo* ]]; then
+        echo "$j"
+        startZookeeperContainer $j
+      else
+        startKafkaContainer $j
+      fi
     done
   modifyHosts
+  for i in "${FAILED_NODE[@]}"
+    do
+      #echo "Failed nodes are $i"
+      echo "starting $i..."
+      if [[ "$i" == *zoo* ]]; then
+        echo "Starting zookeeper in $i"
+        runCommand $i /opt/zookeeper/start-zookeeper.sh
+      else
+        echo "Starting kafka in $i"
+        runCommand $i /opt/kafka/start-kafka.sh
+      fi
+    done
+  
+  startFailureTimer
 }
+
+function killNodee
+{
+  #CURRENT_NODE=`expr $CURRENT_NODE + 1`
+  ZOO_KILL_COUNT=0
+  KAFKA_KILL_COUNT=0
+  FAILED_COUNT=1
+  NUM_KAFKA_TO_KILL=`expr $NUM_KAFKA - $MIN_KAFKA_NODE`
+  NUM_ZOO_TO_KILL=`expr $MAX_ZOO - $MIN_ZOO`
+  unset  FAILED_NODE
+  #declare -A FAILED_NODE=()
+  FAILED_NODE=()
+  failureNodeCount=$(shuf -i 1-"$FAILURE_NUM_NODE" -n 1)
+  #failureNodeCount=3
+  echo "$failureNodeCount node going to die now"
+  while [ "${#FAILED_NODE[@]}" -lt "$failureNodeCount"  ]
+  do
+   ZOO_KAFKA=$(shuf -i 1-2 -n 1) 
+   if [[ "$ZOO_KAFKA" -eq 1 && "$ZOO_KILL_COUNT" -lt "$NUM_ZOO_TO_KILL" ]] ; then
+     zooNodeNumber=$(shuf -i 1-${#ZOO_NODE[@]} -n 1)
+     array_contains FAILED_NODE "zoo$zooNodeNumber" && Z_ALREADY_EXISTS="true" || Z_ALREADY_EXISTS="false"
+     if [ "$Z_ALREADY_EXISTS" == "false"  ] ; then
+       FAILED_NODE+=("zoo$zooNodeNumber")
+       ZOO_KILL_COUNT=`expr $ZOO_KILL_COUNT + 1`
+     fi
+     #echo "zoo$zooNodeNumber"
+   elif [[ "$ZOO_KAFKA" -eq 2 && "$KAFKA_KILL_COUNT" -lt "$NUM_KAFKA_TO_KILL" ]] ; then 
+     kafkaNodeNumber=$(shuf -i 1-${#NODE[@]} -n 1)
+     array_contains FAILED_NODE "knode$kafkaNodeNumber" && K_ALREADY_EXISTS="true" || K_ALREADY_EXISTS="false"
+     if [ "$K_ALREADY_EXISTS" == "false"  ] ; then
+      #echo "adding knode....."
+      FAILED_NODE+=("knode$kafkaNodeNumber")
+      KAFKA_KILL_COUNT=`expr $KAFKA_KILL_COUNT + 1`
+     fi
+     #echo "knode$kafkaNodeNumber >>> KAFKA_KILL_COUNT=$KAFKA_KILL_COUNT"
+   fi
+   if [[ "$ZOO_KILL_COUNT" -eq "$NUM_ZOO_TO_KILL" && "$KAFKA_KILL_COUNT" -eq "$NUM_KAFKA_TO_KILL" ]] ; then 
+    break
+   fi
+  done
+
+  for i in "${FAILED_NODE[@]}"
+    do
+      #echo "Failed nodes are $i"
+      echo "$i going to die..."
+      #docker stop $i
+      docker rm -f $i
+      sleep 1
+    done
+
+  attach_time=$(( $(shuf -i "$ATTACH_TIME_RANGE" -n 1) * 60 ))
+  while true;
+   do
+     attach_time=`expr $attach_time - 1`
+     sleep 1
+     echo "New node will be added in $attach_time seconds."
+     if [ $attach_time -eq 1 ]; then
+       #echo "Going to add..."
+       addNode
+       break
+     fi
+   done
+}
+
 function killNode
 {
   FAILED_COUNT=1
@@ -256,10 +362,10 @@ function startFailureTimer
      echo "Node failure will occur in $failure_time seconds."
      if [ $failure_time -eq 1 ]; then
        #echo "Going to kill..."
-       killNode
+       killNodee
        break
      fi
    done
 }
 
-#startFailureTimer
+startFailureTimer
