@@ -23,7 +23,8 @@ Kafka spinner needs passwordless communication from host machine to all docker c
 4. --failure-num-node - Random nimber of nodes to fail when cluster is up and running. If value is 0, no node failure will occure in the cluster. (eg: --failure-num-node 2)
 5. --attach-time-range - Time range to add new nodes to the cluster after node failure. It will be measured in minutes (eg: --attach-time-range 15-15)
 6. --ssh-public-key - Path of ssh public key (eg: --ssh-public-key /root/.ssh/id_rsa.pub)
-7. --num-partitions - Number of partitions for kafka.
+7. --num-partitions - Number of partitions for kafka. (eg: --num-partitions 3)
+8. --off-zookeeper-failure - Turn off zookeeper node failure using this option. Dont want to give value for this (eg: --off-zookeeper-failure)
 
 
 
