@@ -19,9 +19,10 @@ Kafka spinner needs passwordless communication from host machine to all docker c
 1. --kafka-node-range - Number of minimum and maximum kafka nodes to launch. (eg: --kafka-node-range 3-5, Default: 1-3)
 2. --zookeeper-node-range - Number of minimum and maximum zookeeper nodes to launch. (eg: --zookeeper-node-range 3-5, Default: 1-3)
 3. --failure-time-range - Failure time range to make kafka node to fail in between the given time duration. It will be measured in minutes. (eg: --failure-time-range 30-60)
-4. --failure-num-node - Random nimber of nodes to fail when cluster is up and running. (eg: --failure-num-node 2)
+4. --failure-num-node - Random nimber of nodes to fail when cluster is up and running. If value is 0, no node failure will occure in the cluster. (eg: --failure-num-node 2)
 5. --attach-time-range - Time range to add new nodes to the cluster after node failure. It will be measured in minutes (eg: --attach-time-range 15-15)
 6. --ssh-public-key - Path of ssh public key (eg: --ssh-public-key /root/.ssh/id_rsa.pub)
+7. --num-partitions - Number of partitions for kafka.
 
 
 
