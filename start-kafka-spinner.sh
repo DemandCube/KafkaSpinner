@@ -13,6 +13,7 @@ ZOO_BASE_PORT=218;
 KAFKA_BASE_PORT=909;
 SSH_BASE_PORT=222;
 SSH_PUBLIC_KEY=~/.ssh/id_rsa.pub
+NUM_PARTITIONS=2
 
 # This function is used to display usage.
 function usage
@@ -24,6 +25,7 @@ function usage
   --failure-num-node      Random nimber of nodes to fail when cluster is up and running. (eg: --failure-num-node 2)
   --attach-time-range     Time range to add new nodes to the cluster after node failure. It will be measured in minutes (eg: --attach-time-range 15-15)
   --ssh-public-key        Path of ssh public key (eg: --ssh-public-key /root/.ssh/id_rsa.pub)
+  --num-partitions        Number of partitions for kafka
   -h | --help             Help\n";
 }
 
@@ -102,6 +104,9 @@ while [ "$1" != "" ]; do
                                exit 1
                              fi
                              ;;
+    --num-partitions)        shift
+                             NUM_PARTITIONS=$1
+                             ;;
     -h | --help )            usage
                              exit
                              ;;
@@ -118,7 +123,7 @@ function runCommand
 
 function startKafkaContainer
 {
-  docker run -d -p 22 -p $KAFKA_BASE_PORT$1:9092 -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST --privileged  -h knode$1 --name knode$1 ubuntu:kafka /opt/kafka/config/config-kafka.sh
+  docker run -d -p 22 -p $KAFKA_BASE_PORT$1:9092 -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST -e NUM_PARTITIONS=$NUM_PARTITIONS --privileged  -h knode$1 --name knode$1 ubuntu:kafka /opt/kafka/config/config-kafka.sh
 }
 
 function startZookeeperContainer
@@ -376,4 +381,6 @@ function startFailureTimer
    done
 }
 
-startFailureTimer
+if [ "$FAILURE_NUM_NODE" != "0" ] ; then
+  startFailureTimer
+fi
