@@ -6,8 +6,9 @@ The main goal of KafkaSpinner is to simulate realtime Multi-node Kafka cluster. 
 ##How to run?
 
 ###Prerequisites
-1. Install Docker
-2. Enable passwordless ssh.
+1. [Install Docker](https://docs.docker.com/installation/ubuntulinux/) in host machine.
+2. Install git. 
+3. Enable passwordless ssh.
 Kafka spinner needs passwordless communication from host machine to all docker containers. Host machine need to modify hosts file of docker container every time when new node is added to the cluster. For that host machine should have public ssh key. If not, please generate an rsa key file ```ssh-keygen -t rsa``` using this command. Do not enter a passphrase, just leave it blank.
 
 ###Steps to run
