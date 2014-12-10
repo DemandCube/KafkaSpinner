@@ -2,16 +2,14 @@
 
 #BROKER_ID=4
 
+function int-ip { /sbin/ifconfig $1 | grep "inet addr" | awk -F: '{print $2}' | awk '{print $1}'; }
+
 mkdir -p ~/.ssh;
 mv /opt/authorized_keys ~/.ssh/authorized_keys;
 chmod 700 ~/.ssh;
 chmod 644 ~/.ssh/authorized_keys;
 
-
-
-echo "going to editttttttttttttttttttttt..........................................."
-
-cp /opt/kafka/config/server.properties /opt/kafka/config/server.bak && sed -e "s/broker.id=0/broker.id=$BROKER_ID/;s/#host.name=localhost/host.name=knode$BROKER_ID/;s/zookeeper.connect=localhost:2181/zookeeper.connect=$ZK_CONNECT/" /opt/kafka/config/server.bak > /opt/kafka/config/server.properties
+cp /opt/kafka/config/server.properties /opt/kafka/config/server.bak && sed -e "s/broker.id=0/broker.id=$BROKER_ID/;s/#host.name=localhost/host.name=$(int-ip eth0)/;s/zookeeper.connect=localhost:2181/zookeeper.connect=$ZK_CONNECT/;s/num.partitions=2/num.partitions=$NUM_PARTITIONS/" /opt/kafka/config/server.bak > /opt/kafka/config/server.properties
 
 cp /opt/kafka/config/producer.properties /opt/kafka/config/producer.bak && sed -e "s/metadata.broker.list=localhost:9092/metadata.broker.list=$BROKER_LIST/" /opt/kafka/config/producer.bak > /opt/kafka/config/producer.properties
 
