@@ -14,18 +14,20 @@ KAFKA_BASE_PORT=909;
 SSH_BASE_PORT=222;
 SSH_PUBLIC_KEY=~/.ssh/id_rsa.pub
 NUM_PARTITIONS=2
+ZOOKEEPER_FAILURE="true"
 
 # This function is used to display usage.
 function usage
 {
   echo -e "\nKafka Spinner Usage: \n
-  --kafka-node-range      Number of minimum and maximum kafka nodes to launch. (eg: --kafka-node-range 3-5, Default: 1-3)
-  --zookeeper-node-range  Number of minimum and maximum zookeeper nodes to launch. (eg: --zookeeper-node-range 3-5, Default: 1-3)
-  --failure-time-range    Failure time range to make kafka node to fail in between the given time duration. It will be measured in minutes. (eg: --failure-time-range 30-60)
-  --failure-num-node      Random nimber of nodes to fail when cluster is up and running. (eg: --failure-num-node 2)
-  --attach-time-range     Time range to add new nodes to the cluster after node failure. It will be measured in minutes (eg: --attach-time-range 15-15)
-  --ssh-public-key        Path of ssh public key (eg: --ssh-public-key /root/.ssh/id_rsa.pub)
-  --num-partitions        Number of partitions for kafka
+  --kafka-node-range         Number of minimum and maximum kafka nodes to launch. (eg: --kafka-node-range 3-5, Default: 1-3)
+  --zookeeper-node-range     Number of minimum and maximum zookeeper nodes to launch. (eg: --zookeeper-node-range 3-5, Default: 1-3)
+  --failure-time-range       Failure time range to make kafka node to fail in between the given time duration. It will be measured in minutes. (eg: --failure-time-range 30-60)
+  --failure-num-node         Random nimber of nodes to fail when cluster is up and running. (eg: --failure-num-node 2)
+  --attach-time-range        Time range to add new nodes to the cluster after node failure. It will be measured in minutes (eg: --attach-time-range 15-15)
+  --ssh-public-key           Path of ssh public key (eg: --ssh-public-key /root/.ssh/id_rsa.pub)
+  --num-partitions           Number of partitions for kafka
+  --off-zookeeper-failure    Turn off zookeeper node failure using this option. 
   -h | --help             Help\n";
 }
 
@@ -107,6 +109,8 @@ while [ "$1" != "" ]; do
     --num-partitions)        shift
                              NUM_PARTITIONS=$1
                              ;;
+    --off-zookeeper-failure) ZOOKEEPER_FAILURE="false"
+                             ;; 
     -h | --help )            usage
                              exit
                              ;;
@@ -116,6 +120,8 @@ while [ "$1" != "" ]; do
   shift
 done
 
+
+echo "ZOOKEEPER_FAILURE >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> $ZOOKEEPER_FAILURE"
 function runCommand
 {
   ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$1") "$2"
@@ -289,11 +295,14 @@ function killNodee
   do
    ZOO_KAFKA=$(shuf -i 1-2 -n 1) 
    if [[ "$ZOO_KAFKA" -eq 1 && "$ZOO_KILL_COUNT" -lt "$NUM_ZOO_TO_KILL" ]] ; then
-     zooNodeNumber=$(shuf -i 1-${#ZOO_NODE[@]} -n 1)
-     array_contains FAILED_NODE "zoo$zooNodeNumber" && Z_ALREADY_EXISTS="true" || Z_ALREADY_EXISTS="false"
-     if [ "$Z_ALREADY_EXISTS" == "false"  ] ; then
-       FAILED_NODE+=("zoo$zooNodeNumber")
-       ZOO_KILL_COUNT=`expr $ZOO_KILL_COUNT + 1`
+     if [ "$ZOOKEEPER_FAILURE" == "true" ]
+     then
+       zooNodeNumber=$(shuf -i 1-${#ZOO_NODE[@]} -n 1)
+       array_contains FAILED_NODE "zoo$zooNodeNumber" && Z_ALREADY_EXISTS="true" || Z_ALREADY_EXISTS="false"
+       if [ "$Z_ALREADY_EXISTS" == "false"  ] ; then
+         FAILED_NODE+=("zoo$zooNodeNumber")
+         ZOO_KILL_COUNT=`expr $ZOO_KILL_COUNT + 1`
+       fi
      fi
      #echo "zoo$zooNodeNumber"
    elif [[ "$ZOO_KAFKA" -eq 2 && "$KAFKA_KILL_COUNT" -lt "$NUM_KAFKA_TO_KILL" ]] ; then 
