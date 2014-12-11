@@ -10,12 +10,13 @@ The main goal of KafkaSpinner is to simulate realtime Multi-node Kafka cluster. 
 2. Install git. 
 3. Add new user for kafka spinner - ```sudo adduser kafkaspinner```.
 4. Add the docker group if it doesn't already exist - ```sudo groupadd docker```.
-5. Add the connected user ‘kafkaspinner’ to the docker group - ```sudo gpasswd -a kafkaspinner docker```.
+5. Add the connected user √îkafkaspinner√ï to the docker group - ```sudo gpasswd -a kafkaspinner docker```.
 6. Restart the Docker daemon - ```sudo service docker restart```.
 7. Optional - If you are on Ubuntu 14.04 and up use docker.io instead - ```sudo service docker.io restart``` 
 8. Login into kafkaspinner - ```su kafkaspinner```
-9. Enable passwordless ssh.
-Kafka spinner needs passwordless communication from host machine to all docker containers. Host machine need to modify hosts file of docker container every time when new node is added to the cluster. For that host machine should have public ssh key. If not, please generate an rsa key file ```ssh-keygen -t rsa``` using this command. Do not åenter a passphrase, just leave it blank.
+9. ```cd``` to home folder.
+10. Enable passwordless ssh.
+Kafka spinner needs passwordless communication from host machine to all docker containers. Host machine need to modify hosts file of docker container every time when new node is added to the cluster. For that host machine should have public ssh key. If not, please generate an rsa key file ```ssh-keygen -t rsa``` using this command. Do not ≈íenter a passphrase, just leave it blank.
 ```
 vagrant@vagrant-ubuntu-trusty-64:/vagrant$ sudo su
 root@vagrant-ubuntu-trusty-64:/vagrant# ssh-keygen -t rsa
