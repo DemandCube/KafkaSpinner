@@ -53,9 +53,9 @@ root@vagrant-ubuntu-trusty-64:/vagrant#
 ###Steps to run using Vagrant
 1. ```vagrant up```
 2. ```vagrant ssh```
-3. ```sudo su```
+3. ```sudo su kafkaspinner```
 4. ```cd /KafkaSpinner```
-5. This repo is now mounted in that folder, use kafkaSpinner how you see fit.
+5. This repo is now mounted in that folder, use kafkaSpinner how you see fit.  (Be sure to run as with SUDO!)
 
 ###Arguments
 1. --kafka-node-range - Number of minimum and maximum kafka nodes to launch. (eg: --kafka-node-range 3-5, Default: 1-3)

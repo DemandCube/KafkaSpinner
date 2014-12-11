@@ -9,7 +9,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   
   #Get the vagrant image set up
   config.vm.provision :shell, path: "bootstrap.sh"
-
+  
   #Sync this folder with the VM
   config.vm.synced_folder "./", "/KafkaSpinner"
 end
