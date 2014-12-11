@@ -46,7 +46,7 @@ function updateHosts
       #echo $i
       for j in "${ALL_NODE[@]}"
         do
-          ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
+        ssh -o StrictHostKeyChecking=no root@$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $i) "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
         done
     done 
 }
@@ -58,8 +58,8 @@ function modifyHosts
     do
       for j in "${FAILED_NODE[@]}"
         do
-ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "cp /etc/hosts /etc/hosts.bak && sed -e '/"$j"/s=^[0-9\.]*='"$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $j)"'=' /etc/hosts.bak > /etc/hosts"
-        done
+      ssh -o StrictHostKeyChecking=no root@$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $i) "cp /etc/hosts /etc/hosts.bak && sed -e '/"$j"/s=^[0-9\.]*='"$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $j)"'=' /etc/hosts.bak > /etc/hosts"  
+      done
     done
 
  for i in "${FAILED_NODE[@]}"
@@ -67,7 +67,7 @@ ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if 
       #echo $i
       for j in "${ALL_NODE[@]}"
         do
-          ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$i") "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
+          ssh -o StrictHostKeyChecking=no root@$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $i) "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
         done
     done
   unset $FAILED_NODE
@@ -120,11 +120,9 @@ while [ "$1" != "" ]; do
   shift
 done
 
-
-echo "ZOOKEEPER_FAILURE >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> $ZOOKEEPER_FAILURE"
 function runCommand
 {
-  ssh -o StrictHostKeyChecking=no $USER@$(hostname) -p $(docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$1") "$2"
+  ssh -o StrictHostKeyChecking=no root@$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $1) "$2"
 }
 
 function startKafkaContainer
@@ -182,7 +180,6 @@ while [ "$CURRENT_ZOO_NODE" -le "$MAX_ZOO" ]
     ZOO_NODE[$CURRENT_ZOO_NODE]=zoo$CURRENT_ZOO_NODE
     ALL_NODE+=(zoo$CURRENT_ZOO_NODE)
     echo "starting zoo$CURRENT_ZOO_NODE container..."
-#    docker run -d -p 22 -p $ZOO_BASE_PORT$CURRENT_ZOO_NODE:2181 -e SERVER_ID=$CURRENT_ZOO_NODE --privileged  -h zoo$CURRENT_ZOO_NODE --name zoo$CURRENT_ZOO_NODE  ubuntu:kafka /opt/zookeeper/config-zookeeper.sh
     startZookeeperContainer $CURRENT_ZOO_NODE
     CURRENT_ZOO_NODE=`expr $CURRENT_ZOO_NODE + 1`
 done
@@ -193,15 +190,11 @@ while [ "$CURRENT_NODE" -le "$NUM_KAFKA" ]
     NODE[$CURRENT_NODE]=knode$CURRENT_NODE
     ALL_NODE+=(knode$CURRENT_NODE)
     echo "starting knode$CURRENT_NODE..."
-    #sudo docker run -d -P -e BROKER_ID=$CURRENT_NODE --privileged  -h knode$CURRENT_NODE --name knode$CURRENT_NODE  ubuntu:kafka /opt/kafka/start-kafka.sh
     startKafkaContainer $CURRENT_NODE
     CURRENT_NODE=`expr $CURRENT_NODE + 1`
 done
 
-echo $ZK_CONNECT
-
 updateHosts
-
 
 echo "Start zookeeper in all node"
 for i in "${ZOO_NODE[@]}"
@@ -217,21 +210,6 @@ for i in "${NODE[@]}"
     runCommand $i /opt/kafka/start-kafka.sh
   done
 
-#echo "Starting zookeeper"
-#sudo docker run -d -p 2181:2181 -p 2222:22 -h znode --name znode ubuntu:kafka /opt/zookeeper/start-zookeeper.sh
-##Wainting for 5 seconds to allow znode to start zookeeper
-#echo "Waiting for 10 seconds to allow znode to start zookeeper"
-#sleep 10
-#
-#while [ "$CURRENT_NODE" -le "$NUM_KAFKA" ]    # this is loop1
-#  do
-#    NODE[$CURRENT_NODE]=knode$CURRENT_NODE
-#    echo "starting knode$CURRENT_NODE..."
-#    sudo docker run -d -P -e BROKER_ID=$CURRENT_NODE --privileged  -h knode$CURRENT_NODE --link znode:znode --name knode$CURRENT_NODE  ubuntu:kafka /opt/kafka/start-kafka.sh
-#    CURRENT_NODE=`expr $CURRENT_NODE + 1`
-#done
-
-#updateHosts
 array_contains () {
 local array="$1[@]"
     local seeking=$2
@@ -277,7 +255,7 @@ function addNode
   startFailureTimer
 }
 
-function killNodee
+function killNode
 {
   #CURRENT_NODE=`expr $CURRENT_NODE + 1`
   ZOO_KILL_COUNT=0
@@ -343,37 +321,6 @@ function killNodee
    done
 }
 
-function killNode
-{
-  FAILED_COUNT=1
-  unset  FAILED_NODE
-  declare -A FAILED_NODE
-  failureNodeCount=$(shuf -i 1-"$FAILURE_NUM_NODE" -n 1)
-  echo "$failureNodeCount node going to fail now"
-  failureNumNodes=($(shuf -i 1-${#NODE[@]} -n "$failureNodeCount"))
-  for i in "${failureNumNodes[@]}"
-    do
-      echo "knode$i going to die..."
-      docker rm -f knode$i
-      echo "knode$i died"
-      FAILED_NODE[$FAILED_COUNT]=$i
-      FAILED_COUNT=`expr $FAILED_COUNT + 1`
-    done
-
-  attach_time=$(( $(shuf -i "$ATTACH_TIME_RANGE" -n 1) * 60 ))
-  while true;
-   do
-     attach_time=`expr $attach_time - 1`
-     sleep 1
-     echo "New node will be added in $attach_time seconds."
-     if [ $attach_time -eq 1 ]; then
-       #echo "Going to add..."
-       addNode
-       break
-     fi
-   done
-}
-
 function startFailureTimer 
 {
   failure_time=$(( $(shuf -i "$FAILURE_TIME_RANGE" -n 1) * 60 ))
@@ -383,8 +330,7 @@ function startFailureTimer
      sleep 1
      echo "Node failure will occur in $failure_time seconds."
      if [ $failure_time -eq 1 ]; then
-       #echo "Going to kill..."
-       killNodee
+       killNode
        break
      fi
    done
