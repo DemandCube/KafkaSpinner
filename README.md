@@ -8,7 +8,13 @@ The main goal of KafkaSpinner is to simulate realtime Multi-node Kafka cluster. 
 ###Prerequisites
 1. [Install Docker](https://docs.docker.com/installation/ubuntulinux/) in host machine.
 2. Install git. 
-3. Enable passwordless ssh.
+3. Add new user for kafka spinner - ```sudo adduser kafkaspinner```.
+4. Add the docker group if it doesn't already exist - ```sudo groupadd docker```.
+5. Add the connected user ‘kafkaspinner’ to the docker group - ```sudo gpasswd -a kafkaspinner docker```.
+6. Restart the Docker daemon - ```sudo service docker restart```.
+7. Optional - If you are on Ubuntu 14.04 and up use docker.io instead - ```sudo service docker.io restart``` 
+8. Login into kafkaspinner - ```su kafkaspinner```
+9. Enable passwordless ssh.
 Kafka spinner needs passwordless communication from host machine to all docker containers. Host machine need to modify hosts file of docker container every time when new node is added to the cluster. For that host machine should have public ssh key. If not, please generate an rsa key file ```ssh-keygen -t rsa``` using this command. Do not åenter a passphrase, just leave it blank.
 ```
 vagrant@vagrant-ubuntu-trusty-64:/vagrant$ sudo su
@@ -41,9 +47,7 @@ root@vagrant-ubuntu-trusty-64:/vagrant#
 ###Steps to run
 1. ```git clone https://github.com/DemandCube/KafkaSpinner.git```
 2. ```cd KafkaSpinner```
-3. ```#Make sure you're running as root
-sudo su```
-4. ```./start-kafka-spinner.sh --kafka-node-range 1-3 --zookeeper-node-range 1-3 --failure-time-range 10-30 --attach-time-range 10-30 --failure-num-node 1 --ssh-public-key ~/.ssh/id_rsa.pub --off-zookeeper-failure```
+3. ```./start-kafka-spinner.sh --kafka-node-range 1-3 --zookeeper-node-range 1-3 --failure-time-range 10-30 --attach-time-range 10-30 --failure-num-node 1 --ssh-public-key ~/.ssh/id_rsa.pub --off-zookeeper-failure```
 
 ###Steps to run using Vagrant
 1. ```vagrant up```
@@ -61,8 +65,6 @@ sudo su```
 6. --ssh-public-key - Path of ssh public key (eg: --ssh-public-key /root/.ssh/id_rsa.pub)
 7. --num-partitions - Number of partitions for kafka. (eg: --num-partitions 3)
 8. --off-zookeeper-failure - Turn off zookeeper node failure using this option. Dont want to give value for this (eg: --off-zookeeper-failure)
-
-
 
 
 ###Get into shell for testing
