@@ -9,12 +9,48 @@ The main goal of KafkaSpinner is to simulate realtime Multi-node Kafka cluster. 
 1. [Install Docker](https://docs.docker.com/installation/ubuntulinux/) in host machine.
 2. Install git. 
 3. Enable passwordless ssh.
-Kafka spinner needs passwordless communication from host machine to all docker containers. Host machine need to modify hosts file of docker container every time when new node is added to the cluster. For that host machine should have public ssh key. If not, please generate an rsa key file ```ssh-keygen -t rsa``` using this command. Do not enter a passphrase, just leave it blank.
+Kafka spinner needs passwordless communication from host machine to all docker containers. Host machine need to modify hosts file of docker container every time when new node is added to the cluster. For that host machine should have public ssh key. If not, please generate an rsa key file ```ssh-keygen -t rsa``` using this command. Do not Œenter a passphrase, just leave it blank.
+```
+vagrant@vagrant-ubuntu-trusty-64:/vagrant$ sudo su
+root@vagrant-ubuntu-trusty-64:/vagrant# ssh-keygen -t rsa
+Generating public/private rsa key pair.
+Enter file in which to save the key (/root/.ssh/id_rsa):
+#Don't enter a password here!!
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /root/.ssh/id_rsa.
+Your public key has been saved in /root/.ssh/id_rsa.pub.
+The key fingerprint is:
+f1:9a:9d:a4:6e:8c:a3:55:e5:2b:7a:31:7d:a3:a5:8d root@vagrant-ubuntu-trusty-64
+The key's randomart image is:
++--[ RSA 2048]----+
+|                 |
+|                 |
+|        . .      |
+|         =       |
+|        S.+      |
+|       .o*.o+    |
+|      .o=o+B .   |
+|     .oo+.E .    |
+|    ...+.        |
++-----------------+
+root@vagrant-ubuntu-trusty-64:/vagrant#
+```
+
 
 ###Steps to run
 1. ```git clone https://github.com/DemandCube/KafkaSpinner.git```
 2. ```cd KafkaSpinner```
-3. ```./start-kafka-spinner.sh --kafka-node-range 1-3 --zookeeper-node-range 1-3 --failure-time-range 10-30 --attach-time-range 10-30 --failure-num-node 1 --ssh-public-key ~/.ssh/id_rsa.pub```
+3. ```#Make sure you're running as root
+sudo su```
+4. ```./start-kafka-spinner.sh --kafka-node-range 1-3 --zookeeper-node-range 1-3 --failure-time-range 10-30 --attach-time-range 10-30 --failure-num-node 1 --ssh-public-key ~/.ssh/id_rsa.pub --off-zookeeper-failure```
+
+###Steps to run using Vagrant
+1. ```vagrant up```
+2. ```vagrant ssh```
+3. ```sudo su```
+4. ```cd /KafkaSpinner```
+5. This repo is now mounted in that folder, use kafkaSpinner how you see fit.
 
 ###Arguments
 1. --kafka-node-range - Number of minimum and maximum kafka nodes to launch. (eg: --kafka-node-range 3-5, Default: 1-3)
@@ -48,10 +84,7 @@ For zookeeper, prefix is '218' and it continued by sequence number of the contai
 For kafka, prefix is '909' and it continued by sequence number of the container. ex: 909 for knode1, 9092 for knode2, 9093 for knode3.
 
 ## Tested with 
-#####Ubuntu 12.04, Docker version 1.3.2, kafka_2.9.2-0.8.1.1 , Zookeeper version: 3.4.6 
-
-####Note: 
-1. kafka spinner may not run well or have some issues, since it is in development is in progress.
+#####Ubuntu 12.04, Ubuntu 14.04 Docker version 1.3.2, kafka_2.9.2-0.8.1.1 , Zookeeper version: 3.4.6 
 
 
 
