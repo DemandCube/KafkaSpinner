@@ -37,7 +37,12 @@ ADD config-kafka.sh /opt/kafka/config/config-kafka.sh
 RUN chmod +x /opt/kafka/config/config-kafka.sh
 
 #RUN  echo "    IdentityFile ~/.ssh/id_rsa" >> /etc/ssh/ssh_config
-ADD authorized_keys /opt/authorized_keys
+#ADD authorized_keys /opt/authorized_keys
+RUN mkdir -p /root/.ssh
+RUN chmod 700 /root/.ssh
+ADD authorized_keys /root/.ssh/authorized_keys
+RUN chmod 644 /root/.ssh/authorized_keys
+
 ADD zoo.cfg /opt/zookeeper/conf/zoo.cfg
 
 

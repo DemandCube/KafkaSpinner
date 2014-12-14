@@ -1,10 +1,10 @@
 #!/bin/bash
 
 
-mkdir -p ~/.ssh;
-mv /opt/authorized_keys ~/.ssh/authorized_keys;
-chmod 700 ~/.ssh;
-chmod 644 ~/.ssh/authorized_keys;
+#mkdir -p ~/.ssh;
+#mv /opt/authorized_keys ~/.ssh/authorized_keys;
+#chmod 700 ~/.ssh;
+#chmod 644 ~/.ssh/authorized_keys;
 
 cp /opt/kafka/config/server.properties /opt/kafka/config/server.bak && sed -e "s/broker.id=0/broker.id=$BROKER_ID/;s/#host.name=localhost/host.name=knode$BROKER_ID/;s/zookeeper.connect=localhost:2181/zookeeper.connect=$ZK_CONNECT/;s/num.partitions=2/num.partitions=$NUM_PARTITIONS/" /opt/kafka/config/server.bak > /opt/kafka/config/server.properties
 
