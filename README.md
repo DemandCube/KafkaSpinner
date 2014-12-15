@@ -65,7 +65,7 @@ root@vagrant-ubuntu-trusty-64:/vagrant#
 6. --ssh-public-key - Path of ssh public key (eg: --ssh-public-key /root/.ssh/id_rsa.pub)
 7. --num-partitions - Number of partitions for kafka. (eg: --num-partitions 3)
 8. --off-zookeeper-failure - Turn off zookeeper node failure using this option. Dont want to give value for this (eg: --off-zookeeper-failure)
-
+9. --new-nodes-only - Will add new node with new broker-id and new hosname
 
 ###Get into shell for testing
 After you started your cluster you can get into shell using ```./kafka-shell.sh zoo1```. Argument is the docker conainer name.
