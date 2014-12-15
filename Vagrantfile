@@ -8,8 +8,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "ubuntu/trusty64"
   
   #Get the vagrant image set up
-  config.vm.provision :shell, path: "bootstrap.sh"
+  #config.vm.provision :shell, path: "bootstrap.sh"
   
   #Sync this folder with the VM
-  config.vm.synced_folder "./", "/KafkaSpinner"
+  #config.vm.synced_folder "./", "/home/kafkaspinner/KafkaSpinner", :owner=> 'kafkaspinner', :group=>'kafkaspinner', :create=>true
+  config.vm.synced_folder "./", "/KafkaSpinner"#, :owner=> 'kafkaspinner', :group=>'kafkaspinner', :create=>true
+  
+  config.vm.provision :shell, path: "bootstrap.sh"
+  #config.vm.provision :shell, inline: "sudo mount -t vboxsf -o uid=`id -u kafkaspinner`,gid=`id -g kafkaspinner` ./ /KafkaSpinner"
+  
 end
