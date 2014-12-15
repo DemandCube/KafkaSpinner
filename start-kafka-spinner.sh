@@ -15,6 +15,9 @@ SSH_BASE_PORT=222;
 SSH_PUBLIC_KEY=~/.ssh/id_rsa.pub
 NUM_PARTITIONS=2
 ZOOKEEPER_FAILURE="true"
+NEW_NODES_ONLY="false"
+KAFKA_SEQ_NUMBER=1
+
 
 # This function is used to display usage.
 function usage
@@ -28,6 +31,7 @@ function usage
   --ssh-public-key           Path of ssh public key (eg: --ssh-public-key /root/.ssh/id_rsa.pub)
   --num-partitions           Number of partitions for kafka
   --off-zookeeper-failure    Turn off zookeeper node failure using this option. 
+  --new-nodes-only           Will add new node with new broker-id and new hosname
   -h | --help             Help\n";
 }
 
@@ -58,7 +62,11 @@ function modifyHosts
     do
       for j in "${FAILED_NODE[@]}"
         do
-      ssh -o StrictHostKeyChecking=no root@$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $i) "cp /etc/hosts /etc/hosts.bak && sed -e '/"$j"/s=^[0-9\.]*='"$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $j)"'=' /etc/hosts.bak > /etc/hosts"  
+          if [ "$NEW_NODES_ONLY" == "true"  ] ; then
+            ssh -o StrictHostKeyChecking=no root@$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $i) "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
+          else
+            ssh -o StrictHostKeyChecking=no root@$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $i) "cp /etc/hosts /etc/hosts.bak && sed -e '/"$j"/s=^[0-9\.]*='"$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $j)"'=' /etc/hosts.bak > /etc/hosts"
+          fi
       done
     done
 
@@ -110,7 +118,9 @@ while [ "$1" != "" ]; do
                              NUM_PARTITIONS=$1
                              ;;
     --off-zookeeper-failure) ZOOKEEPER_FAILURE="false"
-                             ;; 
+                             ;;
+    --new-nodes-only)        NEW_NODES_ONLY="true"
+                             ;;
     -h | --help )            usage
                              exit
                              ;;
@@ -128,6 +138,7 @@ function runCommand
 function startKafkaContainer
 {
   docker run -d -p 22 -p $KAFKA_BASE_PORT$1:9092 -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST -e NUM_PARTITIONS=$NUM_PARTITIONS --privileged  -h knode$1 --name knode$1 ubuntu:kafka /opt/kafka/config/config-kafka.sh
+ KAFKA_SEQ_NUMBER=`expr $KAFKA_SEQ_NUMBER + 1`
 }
 
 function startZookeeperContainer
@@ -174,10 +185,12 @@ CURRENT_NODE=1
 echo "Building base docker image..."
 docker build -t ubuntu:kafka .
 ALL_NODE=()
+ZOO_NODE=()
+NODE=()
 
 while [ "$CURRENT_ZOO_NODE" -le "$MAX_ZOO" ]
   do
-    ZOO_NODE[$CURRENT_ZOO_NODE]=zoo$CURRENT_ZOO_NODE
+    ZOO_NODE+=(zoo$CURRENT_ZOO_NODE)
     ALL_NODE+=(zoo$CURRENT_ZOO_NODE)
     echo "starting zoo$CURRENT_ZOO_NODE container..."
     startZookeeperContainer $CURRENT_ZOO_NODE
@@ -187,7 +200,7 @@ done
 
 while [ "$CURRENT_NODE" -le "$NUM_KAFKA" ] 
   do
-    NODE[$CURRENT_NODE]=knode$CURRENT_NODE
+    NODE+=(knode$CURRENT_NODE)
     ALL_NODE+=(knode$CURRENT_NODE)
     echo "starting knode$CURRENT_NODE..."
     startKafkaContainer $CURRENT_NODE
@@ -276,19 +289,25 @@ function killNode
      if [ "$ZOOKEEPER_FAILURE" == "true" ]
      then
        zooNodeNumber=$(shuf -i 1-${#ZOO_NODE[@]} -n 1)
+       zooNodeNumber=`expr $zooNodeNumber - 1`
        array_contains FAILED_NODE "zoo$zooNodeNumber" && Z_ALREADY_EXISTS="true" || Z_ALREADY_EXISTS="false"
        if [ "$Z_ALREADY_EXISTS" == "false"  ] ; then
-         FAILED_NODE+=("zoo$zooNodeNumber")
+         if [[ ${ZOO_NODE[$zooNodeNumber]} ]]; then
+           FAILED_NODE+=(${ZOO_NODE[$zooNodeNumber]})
+         fi   
          ZOO_KILL_COUNT=`expr $ZOO_KILL_COUNT + 1`
        fi
      fi
      #echo "zoo$zooNodeNumber"
    elif [[ "$ZOO_KAFKA" -eq 2 && "$KAFKA_KILL_COUNT" -lt "$NUM_KAFKA_TO_KILL" ]] ; then 
      kafkaNodeNumber=$(shuf -i 1-${#NODE[@]} -n 1)
+     kafkaNodeNumber=`expr $kafkaNodeNumber - 1`
      array_contains FAILED_NODE "knode$kafkaNodeNumber" && K_ALREADY_EXISTS="true" || K_ALREADY_EXISTS="false"
      if [ "$K_ALREADY_EXISTS" == "false"  ] ; then
       #echo "adding knode....."
-      FAILED_NODE+=("knode$kafkaNodeNumber")
+      if [[ ${NODE[$kafkaNodeNumber]} ]]; then
+         FAILED_NODE+=(${NODE[$kafkaNodeNumber]})
+      fi   
       KAFKA_KILL_COUNT=`expr $KAFKA_KILL_COUNT + 1`
      fi
      #echo "knode$kafkaNodeNumber >>> KAFKA_KILL_COUNT=$KAFKA_KILL_COUNT"
@@ -304,6 +323,13 @@ function killNode
       echo "$i going to die..."
       #docker stop $i
       docker rm -f $i
+      if [ "$NEW_NODES_ONLY" == "true"  ] ; then
+        if [[ "$i" == *knode* ]]; then
+          FAILED_NODE=(${FAILED_NODE[@]/$i/knode$KAFKA_SEQ_NUMBER})
+          ALL_NODE=(${ALL_NODE[@]/$i/knode$KAFKA_SEQ_NUMBER})
+          NODE=(${NODE[@]/$i/knode$KAFKA_SEQ_NUMBER})
+        fi
+      fi
       sleep 1
     done
 
