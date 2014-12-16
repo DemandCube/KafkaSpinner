@@ -85,6 +85,14 @@ Since docker is an VM running inside a machine it needs to expose ports to the h
 For zookeeper, prefix is '218' and it continued by sequence number of the container. ex: 2181 for zoo1, 2182 for zoo2, 2183 for zoo3
 For kafka, prefix is '909' and it continued by sequence number of the container. ex: 909 for knode1, 9092 for knode2, 9093 for knode3.
 
+
+##Cluster Helper
+```./cluster-helper.sh``` will help you to get ip address of the containers in the cluster, and also helps to ssh login into the specific node in the cluster.
+ 
+###Arguments
+1. --ip - Print list of IP address and hostname on the cluster. eg: ```./cluster-helper.sh --ip```
+2. --ssh - SSH into any node of the cluster. eg: --ssh nodename. eg: ```./cluster-helper.sh --ssh nodename```
+
 ## Tested with 
 #####Ubuntu 12.04, Ubuntu 14.04 Docker version 1.3.2, kafka_2.9.2-0.8.1.1 , Zookeeper version: 3.4.6 
 
