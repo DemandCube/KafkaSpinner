@@ -48,3 +48,4 @@ sudo su - root -c "chmod 600 /root/.ssh/*"
 
 #Restart docker service
 sudo service docker.io restart
+sudo service docker restart

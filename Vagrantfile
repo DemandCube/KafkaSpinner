@@ -16,5 +16,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   
   config.vm.provision :shell, path: "bootstrap.sh"
   #config.vm.provision :shell, inline: "sudo mount -t vboxsf -o uid=`id -u kafkaspinner`,gid=`id -g kafkaspinner` ./ /KafkaSpinner"
-  
+
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 2048
+  end
 end

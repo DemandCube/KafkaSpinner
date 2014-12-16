@@ -176,7 +176,7 @@ while [ "$CURRENT_NODE" -le "$NUM_KAFKA" ]    # this is loop1
     BROKER_LIST+='knode'$CURRENT_NODE':9092,'
     CURRENT_NODE=`expr $CURRENT_NODE + 1`
 done
-
+    
 BROKER_LIST="${BROKER_LIST%?}"
 ZK_CONNECT="${ZK_CONNECT%?}"
 CURRENT_ZOO_NODE=1
@@ -337,11 +337,11 @@ function killNode
     done
 
   attach_time=$(( $(shuf -i "$ATTACH_TIME_RANGE" -n 1) * 60 ))
+  echo "New node will be added in $attach_time seconds."
   while true;
    do
      attach_time=`expr $attach_time - 1`
      sleep 1
-     echo "New node will be added in $attach_time seconds."
      if [ $attach_time -eq 1 ]; then
        #echo "Going to add..."
        addNode
@@ -353,11 +353,11 @@ function killNode
 function startFailureTimer 
 {
   failure_time=$(( $(shuf -i "$FAILURE_TIME_RANGE" -n 1) * 60 ))
+  echo "Node failure will occur in $failure_time seconds."
   while true;
    do 
      failure_time=`expr $failure_time - 1`
      sleep 1
-     echo "Node failure will occur in $failure_time seconds."
      if [ $failure_time -eq 1 ]; then
        killNode
        break
