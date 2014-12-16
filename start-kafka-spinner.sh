@@ -10,7 +10,7 @@ ATTACH_TIME_RANGE=1-5;
 MIN_ZOO=1
 MAX_ZOO=3
 ZOO_BASE_PORT=218;
-KAFKA_BASE_PORT=909;
+KAFKA_BASE_PORT=90;
 SSH_BASE_PORT=222;
 SSH_PUBLIC_KEY=~/.ssh/id_rsa.pub
 NUM_PARTITIONS=2
@@ -317,6 +317,8 @@ function killNode
    fi
   done
 
+  TEMP_SEQ_NUMBER=$KAFKA_SEQ_NUMBER
+
   for i in "${FAILED_NODE[@]}"
     do
       #echo "Failed nodes are $i"
@@ -325,9 +327,10 @@ function killNode
       docker rm -f $i
       if [ "$NEW_NODES_ONLY" == "true"  ] ; then
         if [[ "$i" == *knode* ]]; then
-          FAILED_NODE=(${FAILED_NODE[@]/$i/knode$KAFKA_SEQ_NUMBER})
-          ALL_NODE=(${ALL_NODE[@]/$i/knode$KAFKA_SEQ_NUMBER})
-          NODE=(${NODE[@]/$i/knode$KAFKA_SEQ_NUMBER})
+          FAILED_NODE=(${FAILED_NODE[@]/$i/knode$TEMP_SEQ_NUMBER})
+          ALL_NODE=(${ALL_NODE[@]/$i/knode$TEMP_SEQ_NUMBER})
+          NODE=(${NODE[@]/$i/knode$TEMP_SEQ_NUMBER})
+          TEMP_SEQ_NUMBER=`expr $TEMP_SEQ_NUMBER + 1`
         fi
       fi
       sleep 1
