@@ -30,7 +30,7 @@ RUN mkdir -p /tmp/zookeeper
 ADD configs/kafka-server-stop.sh /opt/kafka/bin/kafka-server-stop.sh
 ADD start-kafka.sh /opt/kafka/start-kafka.sh
 ADD start-zookeeper.sh /opt/zookeeper/start-zookeeper.sh
-ADD reassign-replicas.json /opt/kafka/reassign-replicas.json
+ADD reassign-replicas.sh /opt/kafka/reassign-replicas.sh
 
 RUN chmod +x /opt/zookeeper/start-zookeeper.sh
 RUN chmod +x /opt/kafka/start-kafka.sh

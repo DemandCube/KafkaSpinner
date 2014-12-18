@@ -287,7 +287,7 @@ function addNode
      #ZK_CONNECT="${ZK_CONNECT%?}"
      NEW_BROKER="${NEW_BROKER%?}"
      echo "Reassignment is in progress... This may take time..."
-     runCommand zoo1 "/opt/kafka/reassign-replicas.json $ZK_CONNECT $NEW_BROKER"
+     runCommand zoo1 "/opt/kafka/reassign-replicas.sh $ZK_CONNECT $NEW_BROKER"
   fi 
   startFailureTimer
 }
