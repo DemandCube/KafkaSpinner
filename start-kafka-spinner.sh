@@ -138,7 +138,8 @@ function runCommand
 function startKafkaContainer
 {
   docker run -d -p 22 -p $KAFKA_BASE_PORT$1:9092 -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST -e NUM_PARTITIONS=$NUM_PARTITIONS --privileged  -h knode$1 --name knode$1 ubuntu:kafka /opt/kafka/config/config-kafka.sh
- KAFKA_SEQ_NUMBER=`expr $KAFKA_SEQ_NUMBER + 1`
+#  docker run -d -p 22 -p $KAFKA_BASE_PORT$1:9092 -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST -e NUM_PARTITIONS=$NUM_PARTITIONS --privileged  -h knode$1 --name knode$1 ubuntu:kafka
+  KAFKA_SEQ_NUMBER=`expr $KAFKA_SEQ_NUMBER + 1`
 }
 
 function startZookeeperContainer
@@ -176,7 +177,7 @@ while [ "$CURRENT_NODE" -le "$NUM_KAFKA" ]    # this is loop1
     BROKER_LIST+='knode'$CURRENT_NODE':9092,'
     CURRENT_NODE=`expr $CURRENT_NODE + 1`
 done
-    
+
 BROKER_LIST="${BROKER_LIST%?}"
 ZK_CONNECT="${ZK_CONNECT%?}"
 CURRENT_ZOO_NODE=1
@@ -248,7 +249,13 @@ function addNode
         echo "$j"
         startZookeeperContainer $j
       else
-        startKafkaContainer $j
+        if [[ "$CLEAN_DIRTY" -eq 1 ]] ; then
+          echo "Starting clean shutdown node"
+          docker start $i
+        else
+          echo "Starting failed node"
+          startKafkaContainer $j
+        fi
       fi
     done
   modifyHosts
@@ -267,6 +274,7 @@ function addNode
   
   startFailureTimer
 }
+
 
 function killNode
 {
@@ -318,15 +326,31 @@ function killNode
   done
 
   TEMP_SEQ_NUMBER=$KAFKA_SEQ_NUMBER
+  #CLEAN_DIRTY=$(shuf -i 1-2 -n 1)
 
   for i in "${FAILED_NODE[@]}"
     do
       #echo "Failed nodes are $i"
-      echo "$i going to die..."
+      #echo "$i going to die..."
       #docker stop $i
-      docker rm -f $i
+      if [[ "$i" == *knode* ]]; then
+        if [[ "$CLEAN_DIRTY" -eq 1 ]] ; then
+          #clean shutdown occurs
+          echo "Clean shutdown $i"
+          runCommand $i "/opt/kafka/bin/kafka-server-stop.sh"
+          docker stop $i
+        else
+          #dirty shutdown
+          echo "Node $i Failure"
+          docker rm -f $i
+        fi
+      else
+        docker rm -f $i
+      fi
+
       if [ "$NEW_NODES_ONLY" == "true"  ] ; then
         if [[ "$i" == *knode* ]]; then
+          docker rm -f $i
           FAILED_NODE=(${FAILED_NODE[@]/$i/knode$TEMP_SEQ_NUMBER})
           ALL_NODE=(${ALL_NODE[@]/$i/knode$TEMP_SEQ_NUMBER})
           NODE=(${NODE[@]/$i/knode$TEMP_SEQ_NUMBER})
@@ -337,11 +361,11 @@ function killNode
     done
 
   attach_time=$(( $(shuf -i "$ATTACH_TIME_RANGE" -n 1) * 60 ))
-  echo "New node will be added in $attach_time seconds."
   while true;
    do
      attach_time=`expr $attach_time - 1`
      sleep 1
+     echo "New node will be added in $attach_time seconds."
      if [ $attach_time -eq 1 ]; then
        #echo "Going to add..."
        addNode
@@ -353,11 +377,16 @@ function killNode
 function startFailureTimer 
 {
   failure_time=$(( $(shuf -i "$FAILURE_TIME_RANGE" -n 1) * 60 ))
-  echo "Node failure will occur in $failure_time seconds."
+  CLEAN_DIRTY=$(shuf -i 1-2 -n 1) 
   while true;
    do 
      failure_time=`expr $failure_time - 1`
      sleep 1
+     if [[ "$CLEAN_DIRTY" -eq 1 ]] ; then
+       echo "Clean shutdown will occur in $failure_time seconds."
+     else
+       echo "Node failure will occur in $failure_time seconds."
+     fi
      if [ $failure_time -eq 1 ]; then
        killNode
        break
