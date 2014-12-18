@@ -251,7 +251,11 @@ function addNode
       else
         if [[ "$CLEAN_DIRTY" -eq 1 ]] ; then
           echo "Starting clean shutdown node"
-          docker start $i
+         if [ "$NEW_NODES_ONLY" == "true"  ] ; then
+           startKafkaContainer $j
+         else 
+           docker start $i
+         fi
         else
           echo "Starting failed node"
           startKafkaContainer $j
@@ -271,7 +275,20 @@ function addNode
         runCommand $i /opt/kafka/start-kafka.sh
       fi
     done
-  
+
+  if [ "$NEW_NODES_ONLY" == "true"  ] ; then
+     NEW_BROKER=""
+     for i in "${FAILED_NODE[@]}"
+     do   
+       if [[ "$i" == *knode* ]]; then
+          NEW_BROKER+=$(sed 's/[^0-9]//g' <<<  $i),
+        fi
+     done
+     #ZK_CONNECT="${ZK_CONNECT%?}"
+     NEW_BROKER="${NEW_BROKER%?}"
+     echo "Reassignment is in progress... This may take time..."
+     runCommand zoo1 "/opt/kafka/reassign-replicas.json $ZK_CONNECT $NEW_BROKER"
+  fi 
   startFailureTimer
 }
 
