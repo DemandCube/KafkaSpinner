@@ -154,7 +154,23 @@ cat $SSH_PUBLIC_KEY > ./authorized_keys
 
 # Removing existing docker containers which are running
 #docker stop $(docker ps -a -q)
-docker rm -f $(docker ps -a -q)
+#docker rm -f $(docker ps -a -q)
+CLUSTER_CONTAINER_LIST+=($(docker ps -a -q))
+
+function killDockerContainers
+{
+for i in "${CLUSTER_CONTAINER_LIST[@]}"
+do
+        hostname=$(docker inspect -f '{{ .Config.Hostname }}' $i)
+        if [[ "$hostname" == *knode* || "$hostname" == *zoo*  ]]; then
+          echo "killing $hostname"
+          docker rm -f $hostname
+        fi
+done
+}
+
+killDockerContainers
+
 
 echo "Removing zookeeper configuration file if exists in local"
 rm zoo.cfg
