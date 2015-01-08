@@ -17,7 +17,7 @@ NUM_PARTITIONS=2
 ZOOKEEPER_FAILURE="true"
 NEW_NODES_ONLY="false"
 KAFKA_SEQ_NUMBER=1
-
+ONLY_ZOOKEEPER="false"
 
 # This function is used to display usage.
 function usage
@@ -32,12 +32,19 @@ function usage
   --num-partitions           Number of partitions for kafka
   --off-zookeeper-failure    Turn off zookeeper node failure using this option. 
   --new-nodes-only           Will add new node with new broker-id and new hosname
+  --only-zookeper    Runs only zookeeper cluster
   -h | --help             Help\n";
 }
 
 # Get exposed 22 port of the docker container. Need to pass conatiner name as argument
 function getPort(){
   echo docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$1"
+}
+
+function timerPrinter
+{
+#echo $1
+echo -ne "$1\r"
 }
 
 # Updates /etc/hosts of all kafka node 
@@ -119,6 +126,8 @@ while [ "$1" != "" ]; do
                              ;;
     --off-zookeeper-failure) ZOOKEEPER_FAILURE="false"
                              ;;
+    --only-zookeper)         ONLY_ZOOKEEPER="true"
+                             ;;
     --new-nodes-only)        NEW_NODES_ONLY="true"
                              ;;
     -h | --help )            usage
@@ -164,7 +173,8 @@ do
         hostname=$(docker inspect -f '{{ .Config.Hostname }}' $i)
         if [[ "$hostname" == *knode* || "$hostname" == *zoo*  ]]; then
           echo "killing $hostname"
-          docker rm -f $hostname
+          docker stop $hostname
+	  docker rm $hostname
         fi
 done
 }
@@ -214,15 +224,16 @@ while [ "$CURRENT_ZOO_NODE" -le "$MAX_ZOO" ]
     CURRENT_ZOO_NODE=`expr $CURRENT_ZOO_NODE + 1`
 done
 
-
-while [ "$CURRENT_NODE" -le "$NUM_KAFKA" ] 
-  do
-    NODE+=(knode$CURRENT_NODE)
-    ALL_NODE+=(knode$CURRENT_NODE)
-    echo "starting knode$CURRENT_NODE..."
-    startKafkaContainer $CURRENT_NODE
-    CURRENT_NODE=`expr $CURRENT_NODE + 1`
-done
+if [[ "$ONLY_ZOOKEEPER" == "false" ]]; then
+  while [ "$CURRENT_NODE" -le "$NUM_KAFKA" ] 
+    do
+      NODE+=(knode$CURRENT_NODE)
+      ALL_NODE+=(knode$CURRENT_NODE)
+      echo "starting knode$CURRENT_NODE..."
+      startKafkaContainer $CURRENT_NODE
+      CURRENT_NODE=`expr $CURRENT_NODE + 1`
+  done
+fi
 
 updateHosts
 
@@ -233,12 +244,14 @@ for i in "${ZOO_NODE[@]}"
     runCommand $i /opt/zookeeper/start-zookeeper.sh
   done
 
-echo "Start kafka in all node"
-for i in "${NODE[@]}"
-  do
-    echo "Starting kafka in $i"
-    runCommand $i /opt/kafka/start-kafka.sh
-  done
+if [[ "$ONLY_ZOOKEEPER" == "false" ]]; then
+  echo "Start kafka in all node"
+  for i in "${NODE[@]}"
+    do
+      echo "Starting kafka in $i"
+      runCommand $i /opt/kafka/start-kafka.sh
+    done
+fi
 
 array_contains () {
 local array="$1[@]"
@@ -292,7 +305,7 @@ function addNode
       fi
     done
 
-  if [ "$NEW_NODES_ONLY" == "true"  ] ; then
+  if [[ "$NEW_NODES_ONLY" == "true"  && "$ONLY_ZOOKEEPER" == "false" ]] ; then
      NEW_BROKER=""
      for i in "${FAILED_NODE[@]}"
      do   
@@ -340,7 +353,7 @@ function killNode
        fi
      fi
      #echo "zoo$zooNodeNumber"
-   elif [[ "$ZOO_KAFKA" -eq 2 && "$KAFKA_KILL_COUNT" -lt "$NUM_KAFKA_TO_KILL" ]] ; then 
+   elif [[ "$ZOO_KAFKA" -eq 2 && "$KAFKA_KILL_COUNT" -lt "$NUM_KAFKA_TO_KILL" && "$ONLY_ZOOKEEPER" == "false" ]] ; then 
      kafkaNodeNumber=$(shuf -i 1-${#NODE[@]} -n 1)
      kafkaNodeNumber=`expr $kafkaNodeNumber - 1`
      array_contains FAILED_NODE "knode$kafkaNodeNumber" && K_ALREADY_EXISTS="true" || K_ALREADY_EXISTS="false"
@@ -398,7 +411,7 @@ function killNode
    do
      attach_time=`expr $attach_time - 1`
      sleep 1
-     echo "New node will be added in $attach_time seconds."
+     timerPrinter "New node will be added in $attach_time seconds."
      if [ $attach_time -eq 1 ]; then
        #echo "Going to add..."
        addNode
@@ -415,18 +428,32 @@ function startFailureTimer
    do 
      failure_time=`expr $failure_time - 1`
      sleep 1
+
      if [[ "$CLEAN_DIRTY" -eq 1 ]] ; then
-       echo "Clean shutdown will occur in $failure_time seconds."
+       timerPrinter "Clean shutdown will occur in $failure_time seconds."
      else
-       echo "Node failure will occur in $failure_time seconds."
+       timerPrinter "Node failure will occur in $failure_time seconds."
      fi
+
+     if [[ "$ONLY_ZOOKEEPER" == "true" ]]; then
+       timerPrinter "Next zookeeper failure occur in $failure_time seconds."
+     fi
+     timerPrinter $msg
      if [ $failure_time -eq 1 ]; then
+       echo ""
        killNode
        break
      fi
    done
 }
 
-if [ "$FAILURE_NUM_NODE" != "0" ] ; then
-  startFailureTimer
+
+if [[ "$FAILURE_NUM_NODE" != "0" ]] ; then
+  if [[ "$ONLY_ZOOKEEPER" == "true" ]]; then
+    if [[ "$ZOOKEEPER_FAILURE" == "true" ]]; then
+     startFailureTimer
+    fi
+  else
+    startFailureTimer
+  fi
 fi
