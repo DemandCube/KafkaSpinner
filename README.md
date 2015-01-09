@@ -66,6 +66,7 @@ root@vagrant-ubuntu-trusty-64:/vagrant#
 7. --num-partitions - Number of partitions for kafka. (eg: --num-partitions 3)
 8. --off-zookeeper-failure - Turn off zookeeper node failure using this option. Dont want to give value for this (eg: --off-zookeeper-failure)
 9. --new-nodes-only - Will add new node with new broker-id and new hosname
+10. --only-zookeper    Runs only zookeeper cluster
 
 ###Get into shell for testing
 After you started your cluster you can get into shell using ```./kafka-shell.sh zoo1```. Argument is the docker conainer name.
