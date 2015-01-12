@@ -18,6 +18,7 @@ ZOOKEEPER_FAILURE="true"
 NEW_NODES_ONLY="false"
 KAFKA_SEQ_NUMBER=1
 ONLY_ZOOKEEPER="false"
+ONLY_KAFKA="false"
 
 # This function is used to display usage.
 function usage
@@ -32,8 +33,8 @@ function usage
   --num-partitions           Number of partitions for kafka
   --off-zookeeper-failure    Turn off zookeeper node failure using this option. 
   --new-nodes-only           Will add new node with new broker-id and new hosname
-  --only-zookeper    Runs only zookeeper cluster
-  -h | --help             Help\n";
+  --start-only               Starts only zookeeper or kafka nodes. (eg: --start-only zookeeper, Options: zookeeper/kafka)
+  -h | --help                Help\n";
 }
 
 # Get exposed 22 port of the docker container. Need to pass conatiner name as argument
@@ -126,7 +127,15 @@ while [ "$1" != "" ]; do
                              ;;
     --off-zookeeper-failure) ZOOKEEPER_FAILURE="false"
                              ;;
-    --only-zookeper)         ONLY_ZOOKEEPER="true"
+    --start-only)            shift
+			     if [ "$1" == "zookeeper" ]; then
+			       ONLY_ZOOKEEPER="true"
+                             elif [ "$1" == "kafka" ]; then
+                               ONLY_KAFKA="true"
+                             else
+                               echo "Given value for --start-only is not acceptable"
+			       exit 1;
+                             fi
                              ;;
     --new-nodes-only)        NEW_NODES_ONLY="true"
                              ;;
@@ -215,14 +224,16 @@ ALL_NODE=()
 ZOO_NODE=()
 NODE=()
 
-while [ "$CURRENT_ZOO_NODE" -le "$MAX_ZOO" ]
-  do
-    ZOO_NODE+=(zoo$CURRENT_ZOO_NODE)
-    ALL_NODE+=(zoo$CURRENT_ZOO_NODE)
-    echo "starting zoo$CURRENT_ZOO_NODE container..."
-    startZookeeperContainer $CURRENT_ZOO_NODE
-    CURRENT_ZOO_NODE=`expr $CURRENT_ZOO_NODE + 1`
-done
+if [[ "$ONLY_KAFKA" == "false" ]]; then
+  while [ "$CURRENT_ZOO_NODE" -le "$MAX_ZOO" ]
+    do
+      ZOO_NODE+=(zoo$CURRENT_ZOO_NODE)
+      ALL_NODE+=(zoo$CURRENT_ZOO_NODE)
+      echo "starting zoo$CURRENT_ZOO_NODE container..."
+      startZookeeperContainer $CURRENT_ZOO_NODE
+      CURRENT_ZOO_NODE=`expr $CURRENT_ZOO_NODE + 1`
+  done
+fi
 
 if [[ "$ONLY_ZOOKEEPER" == "false" ]]; then
   while [ "$CURRENT_NODE" -le "$NUM_KAFKA" ] 
