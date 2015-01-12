@@ -173,8 +173,8 @@ do
         hostname=$(docker inspect -f '{{ .Config.Hostname }}' $i)
         if [[ "$hostname" == *knode* || "$hostname" == *zoo*  ]]; then
           echo "killing $hostname"
-          docker stop $hostname
-	  docker rm $hostname
+          #docker stop $hostname
+	  docker rm -f $hostname
         fi
 done
 }
@@ -313,10 +313,13 @@ function addNode
           NEW_BROKER+=$(sed 's/[^0-9]//g' <<<  $i),
         fi
      done
+     #ALL_NODE
      #ZK_CONNECT="${ZK_CONNECT%?}"
+     randomNode=$(shuf -i 1-${#ALL_NODE[@]} -n 1)
      NEW_BROKER="${NEW_BROKER%?}"
      echo "Reassignment is in progress... This may take time..."
-     runCommand zoo1 "/opt/kafka/reassign-replicas.sh $ZK_CONNECT $NEW_BROKER"
+     echo "${ALL_NODE[$randomNode]} selected to run reassignment progress"    
+     runCommand ${ALL_NODE[$randomNode]} "/opt/kafka/reassign-replicas.sh $ZK_CONNECT $NEW_BROKER"
   fi 
   startFailureTimer
 }
