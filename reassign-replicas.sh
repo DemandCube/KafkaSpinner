@@ -2,10 +2,11 @@
 KAFKA_HOME=/opt/kafka;
 ZK_CONNECT=$1
 TMP_DESCRIBE_PATH=/tmp/describe
+TMP_VERIFY_PATH=/tmp/verify
 VERSION=1
 REASSIGNMENT_JSON_FILE=/tmp/execute.json
 NEW_BROKER=$2
-
+NOT_COMPLETED_SUCCESSFULLY="true"
 
 echo "ZK_CONNECT = $ZK_CONNECT"
 echo "NEW_BROKERS = $NEW_BROKER"
@@ -76,6 +77,29 @@ echo "]}" >> $REASSIGNMENT_JSON_FILE
 
 
 $KAFKA_HOME/bin/kafka-reassign-partitions.sh --zookeeper $ZK_CONNECT --reassignment-json-file $REASSIGNMENT_JSON_FILE --execute
+
+echo "Verify the status of the partition reassignment"
+while [ "$NOT_COMPLETED_SUCCESSFULLY" == "true" ]
+do
+  $KAFKA_HOME/bin/kafka-reassign-partitions.sh --zookeeper $ZK_CONNECT --reassignment-json-file $REASSIGNMENT_JSON_FILE --verify > $TMP_VERIFY_PATH
+  while read line 
+  do
+     echo "$line" | grep -q "Status of partition reassignment"
+     #echo "$?"
+    if [ $? -ne 0 ];then
+      readLine=`echo "$line"`
+      echo "$readLine"
+      if [[ $readLine == *"completed successfully"* ]]; then
+        NOT_COMPLETED_SUCCESSFULLY="false"
+      else
+        NOT_COMPLETED_SUCCESSFULLY="true"
+        break
+      fi
+     fi
+  done < $TMP_VERIFY_PATH
+  sleep 1
+done
+
 else
  echo "No topics found"
 fi
