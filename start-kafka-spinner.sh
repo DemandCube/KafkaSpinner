@@ -38,29 +38,14 @@ function usage
 }
 
 # Get exposed 22 port of the docker container. Need to pass conatiner name as argument
-function getPort(){
-  echo docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$1"
-}
+#function getPort(){
+#  echo docker inspect -f '{{ if index .NetworkSettings.Ports "22/tcp" }}{{(index (index .NetworkSettings.Ports "22/tcp") 0).HostPort}}{{ end }}' "$1"
+#}
 
 function timerPrinter
 {
 #echo $1
 echo -ne "$1\r"
-}
-
-# Updates /etc/hosts of all kafka node 
-function updateHosts
-{
-  echo "Updating /etc/hosts on all kafka nodes..."
-
-  for i in "${ALL_NODE[@]}" 
-    do 
-      #echo $i
-      for j in "${ALL_NODE[@]}"
-        do
-        ssh -o StrictHostKeyChecking=no root@$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $i) "echo '$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $j)    $j'  >> /etc/hosts"
-        done
-    done 
 }
 
 function modifyHosts
@@ -246,7 +231,7 @@ if [[ "$ONLY_ZOOKEEPER" == "false" ]]; then
   done
 fi
 
-updateHosts
+./update-hosts.sh
 
 echo "Start zookeeper in all node"
 for i in "${ZOO_NODE[@]}"
@@ -327,6 +312,7 @@ function addNode
      #ALL_NODE
      #ZK_CONNECT="${ZK_CONNECT%?}"
      randomNode=$(shuf -i 1-${#ALL_NODE[@]} -n 1)
+     randomNode=`expr $randomNode - 1`
      NEW_BROKER="${NEW_BROKER%?}"
      echo "Reassignment is in progress... This may take time..."
      echo "${ALL_NODE[$randomNode]} selected to run reassignment progress"    
@@ -387,7 +373,7 @@ function killNode
 
   TEMP_SEQ_NUMBER=$KAFKA_SEQ_NUMBER
   #CLEAN_DIRTY=$(shuf -i 1-2 -n 1)
-
+  STOP="false"
   for i in "${FAILED_NODE[@]}"
     do
       #echo "Failed nodes are $i"
@@ -398,19 +384,24 @@ function killNode
           #clean shutdown occurs
           echo "Clean shutdown $i"
           runCommand $i "/opt/kafka/bin/kafka-server-stop.sh"
-          docker stop $i
+          #docker stop $i
+          STOP="true"
+          NODES_TO_KILL+=$i',' 
         else
           #dirty shutdown
           echo "Node $i Failure"
-          docker rm -f $i
+          #docker rm -f $i
+          NODES_TO_KILL+=$i','
         fi
       else
-        docker rm -f $i
+        #docker rm -f $i
+        NODES_TO_KILL+=$i','
       fi
 
       if [ "$NEW_NODES_ONLY" == "true"  ] ; then
         if [[ "$i" == *knode* ]]; then
-          docker rm -f $i
+          #docker rm -f $i
+          NODES_TO_KILL+=$i','
           FAILED_NODE=(${FAILED_NODE[@]/$i/knode$TEMP_SEQ_NUMBER})
           ALL_NODE=(${ALL_NODE[@]/$i/knode$TEMP_SEQ_NUMBER})
           NODE=(${NODE[@]/$i/knode$TEMP_SEQ_NUMBER})
@@ -419,6 +410,13 @@ function killNode
       fi
       sleep 1
     done
+
+  NODES_TO_KILL="${NODES_TO_KILL%?}"
+  if [[ "$STOP" == "true" ]]; then
+    ./kill-node.sh --stop "$NODES_TO_KILL"
+  else
+    ./kill-node.sh --remove "$NODES_TO_KILL"      
+  fi
 
   attach_time=$(( $(shuf -i "$ATTACH_TIME_RANGE" -n 1) * 60 ))
   while true;
