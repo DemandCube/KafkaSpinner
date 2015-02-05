@@ -249,6 +249,7 @@ if [[ "$ONLY_ZOOKEEPER" == "false" ]]; then
     done
 fi
 
+echo "Kafka Cluster started"
 array_contains () {
 local array="$1[@]"
     local seeking=$2
@@ -374,6 +375,7 @@ function killNode
   TEMP_SEQ_NUMBER=$KAFKA_SEQ_NUMBER
   #CLEAN_DIRTY=$(shuf -i 1-2 -n 1)
   STOP="false"
+  NODES_TO_KILL=""
   for i in "${FAILED_NODE[@]}"
     do
       #echo "Failed nodes are $i"
