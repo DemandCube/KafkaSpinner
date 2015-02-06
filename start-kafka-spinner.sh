@@ -140,14 +140,14 @@ function runCommand
 
 function startKafkaContainer
 {
-  docker run -d -p 22 -p $KAFKA_BASE_PORT$1:9092 -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST -e NUM_PARTITIONS=$NUM_PARTITIONS --privileged  -h knode$1 --name knode$1 ubuntu:kafka /opt/kafka/config/config-kafka.sh
+  docker run -d -p 22 -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST -e NUM_PARTITIONS=$NUM_PARTITIONS --privileged  -h knode$1 --name knode$1 ubuntu:kafka /opt/kafka/config/config-kafka.sh
 #  docker run -d -p 22 -p $KAFKA_BASE_PORT$1:9092 -e BROKER_ID=$1 -e ZK_CONNECT=$ZK_CONNECT -e BROKER_LIST=$BROKER_LIST -e NUM_PARTITIONS=$NUM_PARTITIONS --privileged  -h knode$1 --name knode$1 ubuntu:kafka
   KAFKA_SEQ_NUMBER=`expr $KAFKA_SEQ_NUMBER + 1`
 }
 
 function startZookeeperContainer
 {
-  docker run -d -p 22 -p $ZOO_BASE_PORT$1:2181 -e SERVER_ID=$1 --privileged  -h zoo$1 --name zoo$1  ubuntu:kafka /opt/zookeeper/config-zookeeper.sh
+  docker run -d -p 22 -e SERVER_ID=$1 --privileged  -h zoo$1 --name zoo$1  ubuntu:kafka /opt/zookeeper/config-zookeeper.sh
 }
 
 
