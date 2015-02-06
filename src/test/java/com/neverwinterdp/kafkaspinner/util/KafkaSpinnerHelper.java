@@ -23,7 +23,7 @@ public class KafkaSpinnerHelper {
           BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
           String line = "";
           while ((line = reader.readLine()) != null) {
-            System.out.println(line);
+//            System.out.println(line);
             if (line.trim().equals("Kafka Cluster started")) {
               KafkaSpinnerHelper.CLUSTER_STARTED = true;
             }

@@ -6,7 +6,7 @@ The main goal of KafkaSpinner is to simulate realtime Multi-node Kafka cluster. 
 ##How to run?
 
 ###Prerequisites
-1. [Install Docker](https://docs.docker.com/installation/ubuntulinux/) in host machine.
+1. [Install Docker](https://docs.docker.com/installation/ubuntulinux/) in host machine. (Version 1.3.2 or greater)
 2. Install git. 
 3. Add new user for kafka spinner - ```sudo adduser kafkaspinner```.
 4. Add the docker group if it doesn't already exist - ```sudo groupadd docker```.
