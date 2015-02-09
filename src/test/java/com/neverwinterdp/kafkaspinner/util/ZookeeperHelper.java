@@ -165,6 +165,11 @@ public class ZookeeperHelper implements Closeable {
     return true;
   }
 
+  
+  public List<String> getChildren(String path) throws Exception{
+    return zkClient.getChildren().forPath(path);
+  }
+  
   public Multimap<Integer, HostPort> getBrokersForTopic(String topic) throws Exception {
     logger.info("getBrokersForTopic. ");
     Multimap<Integer, HostPort> brokers = HashMultimap.create();
@@ -174,6 +179,7 @@ public class ZookeeperHelper implements Closeable {
       for (Integer replicaID : topicPartition.getValue()) {
         // if broker is registered but offline next line throws nonodeexception
         try {
+          
           byte[] partitions = zkClient.getData().forPath(brokerInfoLocation + replicaID);
           Broker part = Utils.toClass(partitions, Broker.class);
           hostPort = new HostPort(part.getHost(), part.getPort());

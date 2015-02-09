@@ -70,28 +70,39 @@ public class TestUtils {
     return messages;
   }
 
+  public static List<String> readMessages(String topic, String zkURL, int partitionsNumber) {
+    List<String> messages = new LinkedList<>();
+    try {
+      waitUntilMetadataIsPropagated(zkURL, topic);
+      try (Consumer consumer = new Consumer(zkURL, topic, partitionsNumber)) {
+        messages.addAll(consumer.read());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return messages;
+  }
+
   public static String createRandomTopic() {
     return Long.toHexString(Double.doubleToLongBits(Math.random()));
   }
 
-
   public static List<Integer> convert(List<String> messages) {
-    return Lists.transform(messages,
-        new Function<String, Integer>() {
-          @Override
-          public Integer apply(String t) {
-            return Integer.parseInt(t);
-          }
-        });
+    return Lists.transform(messages, new Function<String, Integer>() {
+      @Override
+      public Integer apply(String t) {
+        return Integer.parseInt(t);
+      }
+    });
   }
 
   public static void waitUntilMetadataIsPropagated(String zkURL, String topic) {
     ZkClient zkClient = new ZkClient(zkURL, 30000, 30000, ZKStringSerializer$.MODULE$);
     TopicAndPartition partition = new TopicAndPartition(topic, 0);
-    Set<TopicAndPartition> x =
-        scala.collection.JavaConversions.asScalaSet(Collections.singleton(partition));
-    PreferredReplicaLeaderElectionCommand command =
-        new PreferredReplicaLeaderElectionCommand(zkClient, x);
+    Set<TopicAndPartition> x = scala.collection.JavaConversions.asScalaSet(Collections
+        .singleton(partition));
+    PreferredReplicaLeaderElectionCommand command = new PreferredReplicaLeaderElectionCommand(
+        zkClient, x);
     command.moveLeaderToPreferredReplica();
     zkClient.close();
   }

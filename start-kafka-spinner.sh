@@ -53,6 +53,7 @@ function modifyHosts
   echo "Modifying /etc/hosts..."
   for i in "${ALL_NODE[@]}"
     do
+    if grep -w -q "$i" /etc/hosts; then cp /etc/hosts /etc/hosts.bak && sed -e '/'"$i"'/s=^[0-9\.]*='"$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $i)"'=' /etc/hosts.bak > /etc/hosts; else echo "$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $i)    $i"  >> /etc/hosts; fi
       for j in "${FAILED_NODE[@]}"
         do
           if [ "$NEW_NODES_ONLY" == "true"  ] ; then
@@ -65,6 +66,7 @@ function modifyHosts
 
  for i in "${FAILED_NODE[@]}"
     do
+    if grep -w -q "$i" /etc/hosts; then cp /etc/hosts /etc/hosts.bak && sed -e '/'"$i"'/s=^[0-9\.]*='"$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $i)"'=' /etc/hosts.bak > /etc/hosts; else echo "$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $i)    $i"  >> /etc/hosts; fi
       #echo $i
       for j in "${ALL_NODE[@]}"
         do
@@ -384,14 +386,14 @@ function killNode
       if [[ "$i" == *knode* ]]; then
         if [[ "$CLEAN_DIRTY" -eq 1 ]] ; then
           #clean shutdown occurs
-          echo "Clean shutdown $i"
+          echo "Clean Shutdown $i"
           runCommand $i "/opt/kafka/bin/kafka-server-stop.sh"
           #docker stop $i
           STOP="true"
           NODES_TO_KILL+=$i',' 
         else
           #dirty shutdown
-          echo "Node $i Failure"
+          echo "Node Failure $i"
           #docker rm -f $i
           NODES_TO_KILL+=$i','
         fi
@@ -420,7 +422,10 @@ function killNode
     ./kill-node.sh --remove "$NODES_TO_KILL"      
   fi
 
+  echo "Nodes died $NODES_TO_KILL"
+  
   attach_time=$(( $(shuf -i "$ATTACH_TIME_RANGE" -n 1) * 60 ))
+  echo "New node in $attach_time"
   while true;
    do
      attach_time=`expr $attach_time - 1`
@@ -438,11 +443,11 @@ function startFailureTimer
 {
   failure_time=$(( $(shuf -i "$FAILURE_TIME_RANGE" -n 1) * 60 ))
   CLEAN_DIRTY=$(shuf -i 1-2 -n 1) 
+  echo "Node die in $failure_time"
   while true;
    do 
      failure_time=`expr $failure_time - 1`
      sleep 1
-
      if [[ "$CLEAN_DIRTY" -eq 1 ]] ; then
        timerPrinter "Clean shutdown will occur in $failure_time seconds."
      else
