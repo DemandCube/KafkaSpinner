@@ -321,6 +321,7 @@ function addNode
      echo "${ALL_NODE[$randomNode]} selected to run reassignment progress"    
      runCommand ${ALL_NODE[$randomNode]} "/opt/kafka/reassign-replicas.sh $ZK_CONNECT $NEW_BROKER"
   fi 
+  echo "Nodes Added"
   startFailureTimer
 }
 
