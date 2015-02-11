@@ -11,6 +11,7 @@ public class KafkaSpinnerHelper {
   public int     NewNodeIn       = 0;
   public int     NumNodesToDie   = 0;
   public boolean NodesDied       = false;
+  public boolean NodesAdded      = false;
   private String command;
 
   public KafkaSpinnerHelper(String command) {
@@ -43,8 +44,12 @@ public class KafkaSpinnerHelper {
             }
 
             if (line.indexOf("Nodes died") > -1) {
-              System.out.println(line);
+              // System.out.println(line);
               NodesDied = true;
+            }
+
+            if (line.indexOf("Nodes Added") > -1) {
+              NodesAdded = true;
             }
 
             if (line.indexOf("node going to die now") > -1) {
