@@ -19,12 +19,13 @@ import com.neverwinterdp.kafkaspinner.util.KafkaWriter;
 import com.neverwinterdp.kafkaspinner.util.TestUtils;
 import com.neverwinterdp.kafkaspinner.util.ZookeeperHelper;
 
-public class TestKafkaSpinnerNoNodesDie {
+public class TestKafkaSpinnerReadWriteNodesDie {
+  
   static {
     System.setProperty("log4j.configuration", "file:src/test/resources/log4j.properties");
   }
 
-  private static final Logger       logger = Logger.getLogger(TestKafkaSpinnerNoNodesDie.class);
+  private static final Logger       logger = Logger.getLogger(TestKafkaSpinnerReadWriteNodesDie.class);
   private static String             zkURL;
   private static ZookeeperHelper    helper;
   private static KafkaSpinnerHelper kafkaSpinner;
@@ -35,7 +36,7 @@ public class TestKafkaSpinnerNoNodesDie {
   @BeforeClass
   public static void setUpBefore() throws Exception {
 
-    String command = "./start-kafka-spinner.sh --kafka-node-range 1-3 --zookeeper-node-range 1-3 --failure-time-range 1-1 --attach-time-range 1-1 --failure-num-node 1 --ssh-public-key /root/.ssh/id_rsa.pub --off-zookeeper-failure --failure-num-node 0";
+    String command = "./start-kafka-spinner.sh --kafka-node-range 3-5 --zookeeper-node-range 1-3 --failure-time-range 1-1 --attach-time-range 1-1 --failure-num-node 1 --ssh-public-key /root/.ssh/id_rsa.pub --off-zookeeper-failure --failure-num-node 2 --new-nodes-only";
     kafkaSpinner = new KafkaSpinnerHelper(command);
     kafkaSpinner.start();
 
@@ -54,7 +55,7 @@ public class TestKafkaSpinnerNoNodesDie {
   @Test
   public void testSingleMessageWithSingleTopic() throws Exception {
     topic = TestUtils.createRandomTopic();
-    helper.createTopic(topic, 1, 2);
+    helper.createTopic(topic, 1, 3);
     writer = new KafkaWriter.Builder(zkURL, topic).build();
     String message = "Hello KafkaSpinner";
     List<String> messages = new LinkedList<>();
@@ -74,7 +75,7 @@ public class TestKafkaSpinnerNoNodesDie {
   @Test
   public void testTenMessageWithSingleTopic() throws Exception {
     topic = TestUtils.createRandomTopic();
-    helper.createTopic(topic, 1, 2);
+    helper.createTopic(topic, 1, 3);
     writer = new KafkaWriter.Builder(zkURL, topic).build();
     String message = "Hello KafkaSpinner";
     List<String> messages = new LinkedList<>();
@@ -103,7 +104,7 @@ public class TestKafkaSpinnerNoNodesDie {
     for (int i = 0; i < count; i++) {
       topic = "topic" + i;
       String inputMsg = message + topic;
-      helper.createTopic(topic, 1, 2);
+      helper.createTopic(topic, 1, 3);
       writer = new KafkaWriter.Builder(zkURL, topic).build();
       writer.write(inputMsg);
       
