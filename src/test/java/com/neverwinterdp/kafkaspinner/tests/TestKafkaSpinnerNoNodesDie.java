@@ -33,9 +33,9 @@ public class TestKafkaSpinnerNoNodesDie {
   private String                    topic;
 
   @BeforeClass
-  public static void setUpBefore() throws Exception {
+  public static void setUpBeforeClass() throws Exception {
 
-    String command = "./start-kafka-spinner.sh --kafka-node-range 1-3 --zookeeper-node-range 1-3 --failure-time-range 1-1 --attach-time-range 1-1 --failure-num-node 1 --ssh-public-key /root/.ssh/id_rsa.pub --off-zookeeper-failure --failure-num-node 0";
+    String command = "./start-kafka-spinner.sh --kafka-node-range 1-3 --zookeeper-node-range 1-3 --failure-time-range 1-1 --attach-time-range 1-1 --failure-num-node-range 1-1 --ssh-public-key /root/.ssh/id_rsa.pub --off-zookeeper-failure";
     kafkaSpinner = new KafkaSpinnerHelper(command);
     kafkaSpinner.start();
 

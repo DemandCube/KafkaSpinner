@@ -36,7 +36,7 @@ public class TestKafkaSpinnerReadWriteNodesDie {
   @BeforeClass
   public static void setUpBefore() throws Exception {
 
-    String command = "./start-kafka-spinner.sh --kafka-node-range 3-5 --zookeeper-node-range 1-3 --failure-time-range 1-1 --attach-time-range 1-1 --failure-num-node 1 --ssh-public-key /root/.ssh/id_rsa.pub --off-zookeeper-failure --failure-num-node 2 --new-nodes-only";
+    String command = "./start-kafka-spinner.sh --kafka-node-range 3-5 --zookeeper-node-range 1-3 --failure-time-range 1-1 --attach-time-range 1-1 --ssh-public-key /root/.ssh/id_rsa.pub --off-zookeeper-failure --failure-num-node-range 1-2 --new-nodes-only";
     kafkaSpinner = new KafkaSpinnerHelper(command);
     kafkaSpinner.start();
 

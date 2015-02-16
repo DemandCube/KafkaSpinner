@@ -6,12 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class KafkaSpinnerHelper {
-  public boolean CLUSTER_STARTED = false;
-  public int     NodeDieIn       = 0;
-  public int     NewNodeIn       = 0;
-  public int     NumNodesToDie   = 0;
-  public boolean NodesDied       = false;
-  public boolean NodesAdded      = false;
+  public boolean CLUSTER_STARTED     = false;
+  public int     NodeDieIn           = 0;
+  public int     NewNodeIn           = 0;
+  public int     NumNodesToDie       = 0;
+  public boolean NodesDied           = false;
+  public boolean NodesAdded          = false;
+  public boolean ReassignmentSuccess = false;
   private String command;
 
   public KafkaSpinnerHelper(String command) {
@@ -55,6 +56,10 @@ public class KafkaSpinnerHelper {
             if (line.indexOf("node going to die now") > -1) {
               NumNodesToDie = Integer.parseInt(line.substring(0,
                   line.indexOf("node going to die now")).trim());
+            }
+
+            if (line.indexOf("Reassignment Success") > -1) {
+              ReassignmentSuccess = true;
             }
           }
           p.waitFor();

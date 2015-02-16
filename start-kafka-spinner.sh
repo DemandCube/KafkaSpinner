@@ -27,7 +27,7 @@ function usage
   --kafka-node-range         Number of minimum and maximum kafka nodes to launch. (eg: --kafka-node-range 3-5, Default: 1-3)
   --zookeeper-node-range     Number of minimum and maximum zookeeper nodes to launch. (eg: --zookeeper-node-range 3-5, Default: 1-3)
   --failure-time-range       Failure time range to make kafka node to fail in between the given time duration. It will be measured in minutes. (eg: --failure-time-range 30-60)
-  --failure-num-node         Random nimber of nodes to fail when cluster is up and running. (eg: --failure-num-node 2)
+  --failure-num-node-range   Random nimber of nodes to fail when cluster is up and running. (eg: --failure-num-node 2)
   --attach-time-range        Time range to add new nodes to the cluster after node failure. It will be measured in minutes (eg: --attach-time-range 15-15)
   --ssh-public-key           Path of ssh public key (eg: --ssh-public-key /root/.ssh/id_rsa.pub)
   --num-partitions           Number of partitions for kafka
@@ -78,43 +78,44 @@ function modifyHosts
 
 while [ "$1" != "" ]; do
   case $1 in
-    --kafka-node-range)      shift
-                             IFS='-' read -a KAFKA_NODE_RANGE <<< "${1}"
-                             NUM_KAFKA=${KAFKA_NODE_RANGE[1]}
-                             MIN_KAFKA_NODE=${KAFKA_NODE_RANGE[0]}
-                             ;;
-    --zookeeper-node-range)  shift
-                             IFS='-' read -a ZOO_NODE_RANGE <<< "${1}"
-                             MIN_ZOO=${ZOO_NODE_RANGE[0]}
-                             MAX_ZOO=${ZOO_NODE_RANGE[1]}
-                             ;;
-    --failure-time-range)    shift
-                             FAILURE_TIME_RANGE=$1
-                             ;;
-    --failure-num-node)      shift
-                             FAILURE_NUM_NODE=$1
-                             #DIFF=`expr $NUM_KAFKA - $FAILURE_NUM_NODE`
-                             #if [ $DIFF -lt $MIN_KAFKA_NODE ];then
-                             #echo "It is not allowed to kill/fail nodes less than minimum node"
-                             #exit 1
-                             #fi
-                             ;;
-    --attach-time-range)     shift
-                             ATTACH_TIME_RANGE=$1
-                             ;;
-    --ssh-public-key)        shift
-                             SSH_PUBLIC_KEY=$1
-                             if [ -z "$1" ] ; then 
-                               echo "Exiting with non-zero error code. --ssh-public-key should not be empty"
-                               exit 1
-                             fi
-                             ;;
-    --num-partitions)        shift
-                             NUM_PARTITIONS=$1
-                             ;;
-    --off-zookeeper-failure) ZOOKEEPER_FAILURE="false"
-                             ;;
-    --start-only)            shift
+    --kafka-node-range)       shift
+                              IFS='-' read -a KAFKA_NODE_RANGE <<< "${1}"
+                              NUM_KAFKA=${KAFKA_NODE_RANGE[1]}
+                              MIN_KAFKA_NODE=${KAFKA_NODE_RANGE[0]}
+                              ;;
+    --zookeeper-node-range)   shift
+                              IFS='-' read -a ZOO_NODE_RANGE <<< "${1}"
+                              MIN_ZOO=${ZOO_NODE_RANGE[0]}
+                              MAX_ZOO=${ZOO_NODE_RANGE[1]}
+                              ;;
+    --failure-time-range)     shift
+                              FAILURE_TIME_RANGE=$1
+                              ;;
+    --failure-num-node-range) shift
+                              FAILURE_NUM_NODE=$(shuf -i $1 -n 1)
+                              echo $FAILURE_NUM_NODE
+                              #DIFF=`expr $NUM_KAFKA - $FAILURE_NUM_NODE`
+                              #if [ $DIFF -lt $MIN_KAFKA_NODE ];then
+                              #echo "It is not allowed to kill/fail nodes less than minimum node"
+                              #exit 1
+                              #fi
+                              ;;
+    --attach-time-range)      shift
+                              ATTACH_TIME_RANGE=$1
+                              ;;
+    --ssh-public-key)         shift
+                              SSH_PUBLIC_KEY=$1
+                              if [ -z "$1" ] ; then 
+                                echo "Exiting with non-zero error code. --ssh-public-key should not be empty"
+                                exit 1
+                              fi
+                              ;;
+    --num-partitions)         shift
+                              NUM_PARTITIONS=$1
+                              ;;
+    --off-zookeeper-failure)  ZOOKEEPER_FAILURE="false"
+                              ;;
+    --start-only)             shift
 			     if [ "$1" == "zookeeper" ]; then
 			       ONLY_ZOOKEEPER="true"
                              elif [ "$1" == "kafka" ]; then
@@ -320,6 +321,7 @@ function addNode
      echo "Reassignment is in progress... This may take time..."
      echo "${ALL_NODE[$randomNode]} selected to run reassignment progress"    
      runCommand ${ALL_NODE[$randomNode]} "/opt/kafka/reassign-replicas.sh $ZK_CONNECT $NEW_BROKER"
+     echo "Reassignment Success"
   fi 
   echo "Nodes Added"
   startFailureTimer

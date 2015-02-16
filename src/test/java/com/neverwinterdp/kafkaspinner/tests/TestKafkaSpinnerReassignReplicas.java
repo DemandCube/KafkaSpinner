@@ -3,18 +3,15 @@ package com.neverwinterdp.kafkaspinner.tests;
 import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.UUID;
-
-import kafka.common.FailedToSendMessageException;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.neverwinterdp.kafkaspinner.util.KafkaSpinnerHelper;
@@ -22,7 +19,7 @@ import com.neverwinterdp.kafkaspinner.util.KafkaWriter;
 import com.neverwinterdp.kafkaspinner.util.TestUtils;
 import com.neverwinterdp.kafkaspinner.util.ZookeeperHelper;
 
-public class TestKafkaSpinnerOnlyNewNodes {
+public class TestKafkaSpinnerReassignReplicas {
   static {
     System.setProperty("log4j.configuration", "file:src/test/resources/log4j.properties");
   }
@@ -36,10 +33,11 @@ public class TestKafkaSpinnerOnlyNewNodes {
   private String                    brokerInfoLocation = "/brokers/ids";
   private KafkaWriter               writer;
   private String                    topic;
+  
 
   @Before
   public void setUpBefore() throws Exception {
-    String command = "./start-kafka-spinner.sh --kafka-node-range 3-5 --zookeeper-node-range 1-3 --failure-time-range 1-1 --attach-time-range 1-1 --failure-num-node-range 1-2 --ssh-public-key /root/.ssh/id_rsa.pub --off-zookeeper-failure --new-nodes-only";
+    String command = "./start-kafka-spinner.sh --kafka-node-range 2-3 --zookeeper-node-range 1-3 --failure-time-range 2-2 --attach-time-range 1-1 --failure-num-node-range 1-1 --ssh-public-key /root/.ssh/id_rsa.pub --off-zookeeper-failure --new-nodes-only";
     kafkaSpinner = new KafkaSpinnerHelper(command);
     kafkaSpinner.start();
 
@@ -61,6 +59,9 @@ public class TestKafkaSpinnerOnlyNewNodes {
     System.out.println("Broker list before node(s) die \n" + brokerList.toString());
 
     int brokerSize = brokerList.size();
+
+    writeTenMessageWithTenTopic();
+
     System.out.println("Node(s) will die in " + kafkaSpinner.NodeDieIn + " seconds. Please wait.");
     while (!kafkaSpinner.NodesDied) {
       Thread.sleep(1000);
@@ -78,6 +79,7 @@ public class TestKafkaSpinnerOnlyNewNodes {
         diedNodes.add(node);
       }
     }
+    
     System.out.println("Died nodes are " + diedNodes);
     System.out.println("Broker list after node(s) die \n" + brokerListAfterNodesDie.toString());
     assertEquals(brokerSize - brokerListAfterNodesDie.size(), kafkaSpinner.NumNodesToDie);
@@ -86,6 +88,11 @@ public class TestKafkaSpinnerOnlyNewNodes {
     while (!kafkaSpinner.NodesAdded) {
       Thread.sleep(1000);
     }
+
+    // System.out.println("Waiting for reassaignment");
+    // while (!kafkaSpinner.ReassignmentSuccess) {
+    // Thread.sleep(1000);
+    // }
 
     Thread.sleep(1000 * 10);
     System.out.println("Node(s) Added");
@@ -99,29 +106,56 @@ public class TestKafkaSpinnerOnlyNewNodes {
       }
     }
     System.out.println("Added nodes are " + addedNodes);
-    
-    
+
     Assert.assertFalse(diedNodes.containsAll(addedNodes) && addedNodes.containsAll(diedNodes));
     assertEquals(brokerList.size(), brokerSize);
 
+    readAndTestReassignment();
+
   }
 
- 
-  private void write(String topic, String message) throws Exception {
-    writer = new KafkaWriter.Builder(zkURL, topic).build();
-    try {
-      writer.write(message);
-    } catch (Exception e) {
-      e.printStackTrace();
+  Map<String, List<String>> map = new HashMap<String, List<String>>();
+
+  private void writeTenMessageWithTenTopic() throws Exception {
+    System.out.println("Writing messages to cluster");
+    int count = 10;
+    String message = "Hello KafkaSpinner in ";
+
+    for (int i = 0; i < count; i++) {
+      topic = "reassaigntopic" + i;
+      helper.createTopic(topic, 1, 3);
+
+      // System.out.println("brokerssss >>>> " +
+      // helper.getBrokersForTopicAndPartition(topic, 0));
+      // List<String> hostPorts =
+      // helper.getBrokersForTopicAndPartitionAsList(topic, 0);
+      // List<String> hostString =
+      map.put(topic, helper.getBrokersForTopicAndPartitionAsList(topic, 0));
+      writer = new KafkaWriter.Builder(zkURL, topic).build();
+      for (int j = 0; j < count; j++) {
+        String inputMsg = message + topic;
+        writer.write(inputMsg);
+      }
     }
     logger.debug("finished writing to kafka");
+
   }
 
-  private void readAndTest(String topic, String message) throws Exception {
-    List<String> messages = TestUtils.readMessages(topic, zkURL, 0);
-    logger.debug("Messages " + messages);
-    assertEquals(1, messages.size());
-    assertEquals(message, messages.get(0));
+  private void readAndTestReassignment() throws Exception {
+    int count = 10;
+    List<String> messages;
+    for (int i = 0; i < count; i++) {
+      messages = new LinkedList<>();
+      topic = "reassaigntopic" + i;
+      List<String> hostPorts = helper.getBrokersForTopicAndPartitionAsList(topic, 0);
+
+      System.out.println("Replicas before reassaignment - " + map.get(topic)
+          + "  ->  Replicas after reassaignment - " + hostPorts);
+      Assert.assertFalse(hostPorts.containsAll(map.get(topic))
+          && map.get(topic).containsAll(hostPorts));
+      messages = TestUtils.readMessages(topic, zkURL);
+      assertEquals(count, messages.size());
+    }
   }
 
   @After

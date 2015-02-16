@@ -2,6 +2,7 @@ package com.neverwinterdp.kafkaspinner.util;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -123,6 +124,27 @@ public class ZookeeperHelper implements Closeable {
         Broker part = Utils.toClass(partitions, Broker.class);
         broker = new HostPort(part.getHost(), part.getPort());
         brokers.add(broker);
+      } catch (NoNodeException nne) {
+        logger.debug(nne.getMessage());
+      }
+    }
+    return brokers;
+  }
+  
+  public List<String> getBrokersForTopicAndPartitionAsList(String topic, int partition)
+      throws Exception {
+    PartitionState partitionState = getPartitionState(topic, partition);
+    List<String> brokers = new ArrayList<String>();
+    byte[] partitions;
+    logger.debug("PartitionState " + partitionState);
+
+    for (Integer b : partitionState.getIsr()) {
+      // if broker is registered but offline next line throws
+      // nonodeexception
+      try {
+        partitions = zkClient.getData().forPath(brokerInfoLocation + b);
+        Broker part = Utils.toClass(partitions, Broker.class);
+        brokers.add(part.getHost()+":"+part.getPort());
       } catch (NoNodeException nne) {
         logger.debug(nne.getMessage());
       }
