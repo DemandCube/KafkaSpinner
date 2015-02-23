@@ -27,7 +27,7 @@ function usage
   --kafka-node-range         Number of minimum and maximum kafka nodes to launch. (eg: --kafka-node-range 3-5, Default: 1-3)
   --zookeeper-node-range     Number of minimum and maximum zookeeper nodes to launch. (eg: --zookeeper-node-range 3-5, Default: 1-3)
   --failure-time-range       Failure time range to make kafka node to fail in between the given time duration. It will be measured in minutes. (eg: --failure-time-range 30-60)
-  --failure-num-node-range   Random nimber of nodes to fail when cluster is up and running. (eg: --failure-num-node 2)
+  --failure-num-node-range   Random nimber of nodes to fail when cluster is up and running. (eg: --failure-num-node-range 1-2)
   --attach-time-range        Time range to add new nodes to the cluster after node failure. It will be measured in minutes (eg: --attach-time-range 15-15)
   --ssh-public-key           Path of ssh public key (eg: --ssh-public-key /root/.ssh/id_rsa.pub)
   --num-partitions           Number of partitions for kafka
@@ -63,7 +63,6 @@ function modifyHosts
           fi
       done
     done
-
  for i in "${FAILED_NODE[@]}"
     do
     if grep -w -q "$i" /etc/hosts; then cp /etc/hosts /etc/hosts.bak && sed -e '/'"$i"'/s=^[0-9\.]*='"$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' $i)"'=' /etc/hosts.bak > /etc/hosts; else echo "$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $i)    $i"  >> /etc/hosts; fi
