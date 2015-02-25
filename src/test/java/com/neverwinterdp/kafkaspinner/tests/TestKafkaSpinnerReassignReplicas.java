@@ -52,7 +52,7 @@ public class TestKafkaSpinnerReassignReplicas {
   }
 
   @Test
-  public void testNewNodesGoingUpAndDown() throws Exception {
+  public void testReassaignReplicas() throws Exception {
 
     List<String> brokerList = helper.getChildren(brokerInfoLocation);
 
@@ -89,11 +89,6 @@ public class TestKafkaSpinnerReassignReplicas {
       Thread.sleep(1000);
     }
 
-    // System.out.println("Waiting for reassaignment");
-    // while (!kafkaSpinner.ReassignmentSuccess) {
-    // Thread.sleep(1000);
-    // }
-
     Thread.sleep(1000 * 10);
     System.out.println("Node(s) Added");
     List<String> brokerListAfterNodesAdded = helper.getChildren(brokerInfoLocation);
@@ -124,12 +119,6 @@ public class TestKafkaSpinnerReassignReplicas {
     for (int i = 0; i < count; i++) {
       topic = "reassaigntopic" + i;
       helper.createTopic(topic, 1, 3);
-
-      // System.out.println("brokerssss >>>> " +
-      // helper.getBrokersForTopicAndPartition(topic, 0));
-      // List<String> hostPorts =
-      // helper.getBrokersForTopicAndPartitionAsList(topic, 0);
-      // List<String> hostString =
       map.put(topic, helper.getBrokersForTopicAndPartitionAsList(topic, 0));
       writer = new KafkaWriter.Builder(zkURL, topic).build();
       for (int j = 0; j < count; j++) {
